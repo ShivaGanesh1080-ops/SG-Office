@@ -11,9 +11,17 @@ import {
   ShieldCheck,
   CheckCircle2,
   FileSpreadsheet,
+  RefreshCw,
+  Zap,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { queryYellaAI, getAIConfig, saveAIConfig } from '../../services/aiService';
+import {
+  queryYellaAI,
+  getAIConfig,
+  saveAIConfig,
+  GEMINI_MODELS,
+  onModelSwitch,
+} from '../../services/aiService';
 import toast from 'react-hot-toast';
 
 export function AIPanelSlider() {
@@ -31,7 +39,25 @@ export function AIPanelSlider() {
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(() => getAIConfig().apiKey || '');
   const [aiProvider, setAiProvider] = useState<'gemini' | 'openai' | 'local'>(() => getAIConfig().provider || 'gemini');
+  const [selectedModel, setSelectedModel] = useState<string>(() => getAIConfig().model || 'gemini-1.5-flash');
+  const [currentActiveModel, setCurrentActiveModel] = useState<string>(() => getAIConfig().model || 'gemini-1.5-flash');
   const csvInputRef = useRef<HTMLInputElement>(null);
+
+  // Subscribe to automated model failover events
+  useEffect(() => {
+    const unsubscribe = onModelSwitch((event) => {
+      setCurrentActiveModel(event.toModel);
+      setSelectedModel(event.toModel);
+      toast.success(
+        `⚡ Gemini rate limit reached on ${event.fromModel}. Automatically switched to ${event.toModel}!`,
+        {
+          icon: '🔄',
+          duration: 5000,
+        }
+      );
+    });
+    return unsubscribe;
+  }, []);
 
   // File upload directly into Yella
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,7 +159,7 @@ export function AIPanelSlider() {
       toast.success('Financial model created in Excel!');
     }
 
-    // Call Yella AI Service (Live Gemini / OpenAI or Local Engine)
+    // Call Yella AI Service (Live Gemini / OpenAI with Auto-Failover or Local Engine)
     const contextStr = `Current workspace application: ${currentApp || 'SG-Office Home'}`;
     const aiResponse = await queryYellaAI(userPrompt, contextStr, aiMessages);
 
@@ -147,13 +173,16 @@ export function AIPanelSlider() {
   };
 
   const handleSaveKey = () => {
+    const finalModel = aiProvider === 'gemini' ? selectedModel : 'gpt-4o-mini';
     saveAIConfig({
       provider: aiProvider,
       apiKey: apiKeyInput.trim(),
-      model: aiProvider === 'gemini' ? 'gemini-1.5-flash' : 'gpt-4o-mini',
+      model: finalModel,
+      autoSwitchModel: true,
     });
+    setCurrentActiveModel(finalModel);
     setShowKeyModal(false);
-    toast.success(`${aiProvider.toUpperCase()} API Key saved! Live AI active.`);
+    toast.success(`${aiProvider.toUpperCase()} connected with model auto-failover!`);
   };
 
   return (
@@ -199,16 +228,22 @@ export function AIPanelSlider() {
       {/* API Key Status Notice */}
       <div className="px-3 py-1.5 bg-[#f3f2f1] border-b border-[#edebe9] flex items-center justify-between text-[11px]">
         <div className="flex items-center gap-1.5 text-[#605e5c]">
-          <span className={`w-2 h-2 rounded-full ${apiKeyInput ? 'bg-emerald-500' : 'bg-purple-500'}`} />
+          <span className={`w-2 h-2 rounded-full ${apiKeyInput ? 'bg-emerald-500 animate-pulse' : 'bg-purple-500'}`} />
           <span className="text-[10px]">
-            {apiKeyInput ? `${aiProvider.toUpperCase()} Live AI Active` : 'Yella Autonomous Core'}
+            {apiKeyInput ? (
+              <span>
+                <strong className="text-emerald-700">{currentActiveModel}</strong> • Auto-failover ON
+              </span>
+            ) : (
+              'Yella Autonomous Core'
+            )}
           </span>
         </div>
         <button
           onClick={() => setShowKeyModal(true)}
           className="text-[10px] text-purple-700 font-semibold hover:underline"
         >
-          {apiKeyInput ? 'Change Key' : '+ Connect API Key'}
+          {apiKeyInput ? 'Settings' : '+ Connect API Key'}
         </button>
       </div>
 
@@ -256,7 +291,7 @@ export function AIPanelSlider() {
           <button
             onClick={handleSendPrompt}
             disabled={!prompt.trim()}
-            className="p-1.5 rounded bg-gradient-to-r from-purple-600 to-indigo-600 text-white disabled:opacity-40"
+            className="p-1.5 rounded bg-gradient-to-r from-purple-600 to-indigo-600 text-white disabled:opacity-40 hover:opacity-90"
           >
             <Send size={13} />
           </button>
@@ -275,7 +310,7 @@ export function AIPanelSlider() {
       {/* API Key Modal */}
       {showKeyModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-2xs flex items-center justify-center p-4 z-50">
-          <div className="w-[360px] bg-white rounded-xl shadow-2xl border border-[#edebe9] p-5 space-y-3.5">
+          <div className="w-[380px] bg-white rounded-xl shadow-2xl border border-[#edebe9] p-5 space-y-3.5">
             <div className="flex items-center justify-between border-b pb-2">
               <div className="flex items-center gap-2">
                 <Key size={16} className="text-purple-600" />
@@ -287,10 +322,10 @@ export function AIPanelSlider() {
             </div>
 
             <p className="text-[11px] text-[#605e5c]">
-              Enter your Google Gemini or OpenAI API Key to give Yella live web intelligence and unlimited reasoning:
+              Enter your Google Gemini or OpenAI API Key to give Yella live web intelligence with automatic quota protection:
             </p>
 
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <div className="flex gap-2">
                 <button
                   onClick={() => setAiProvider('gemini')}
@@ -313,6 +348,36 @@ export function AIPanelSlider() {
                 onChange={(e) => setApiKeyInput(e.target.value)}
                 className="w-full text-xs px-2.5 py-1.5 border border-[#d2d0ce] rounded outline-none focus:border-purple-600 font-mono"
               />
+
+              {aiProvider === 'gemini' && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#605e5c] uppercase tracking-wide">
+                    Preferred Gemini Model
+                  </label>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="w-full text-xs px-2 py-1.5 border border-[#d2d0ce] rounded outline-none focus:border-purple-600 bg-white"
+                  >
+                    <option value="gemini-1.5-flash">gemini-1.5-flash (Fast & Versatile - 15 RPM)</option>
+                    <option value="gemini-2.0-flash">gemini-2.0-flash (Next-Gen Fast)</option>
+                    <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b (High Volume / Lightweight)</option>
+                    <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (Ultra Fast)</option>
+                    <option value="gemini-1.5-pro">gemini-1.5-pro (Deep Complex Reasoning)</option>
+                  </select>
+
+                  <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[10.5px] text-emerald-900 leading-normal flex items-start gap-1.5">
+                    <Zap size={13} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <strong>Automatic Quota Protection:</strong>
+                      <p className="text-[10px] text-emerald-800 mt-0.5">
+                        If Gemini hits a rate limit (HTTP 429) or quota exhaustion on this model, Yella will automatically cascade to the next healthy Gemini model (Flash ➔ 2.0-Flash ➔ Flash-8B ➔ 2.0-Lite ➔ Pro ➔ Local) seamlessly.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <p className="text-[10px] text-[#8a8886]">
                 Keys are stored only in your browser localStorage. Never sent to any intermediate server.
               </p>
