@@ -55,11 +55,11 @@ export function Sidebar() {
           className="flex items-center gap-2 overflow-hidden cursor-pointer"
           title="Return to Office Home"
         >
-          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-[11px] shadow-xs flex-shrink-0">
-            SG
+          <div className="w-6 h-6 rounded-md bg-[#0078d4] flex items-center justify-center text-white shadow-xs flex-shrink-0">
+            <LayoutGrid size={14} className="text-white" />
           </div>
           {!sidebarCollapsed && (
-            <span className="font-bold text-xs text-[#201f1e] truncate tracking-tight">SG-Office</span>
+            <span className="font-bold text-xs text-[#201f1e] truncate tracking-tight">Microsoft 365</span>
           )}
         </div>
         {!sidebarCollapsed && (

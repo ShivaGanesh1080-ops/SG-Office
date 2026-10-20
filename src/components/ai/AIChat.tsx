@@ -45,14 +45,15 @@ export function AIChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [aiMessages, isTyping]);
 
-  // Subscribe to automatic model failover events
+  // Subscribe to automatic model failover events (single debounced notification)
   useEffect(() => {
     const unsubscribe = onModelSwitch((event) => {
       setCurrentActiveModel(event.toModel);
       setSelectedModel(event.toModel);
-      toast.success(
-        `⚡ Gemini rate limit reached on ${event.fromModel}. Automatically switched to ${event.toModel}!`,
-        { icon: '🔄', duration: 5000 }
+      toast.dismiss();
+      toast(
+        `⚡ Quota failover: now using ${event.toModel}`,
+        { id: 'model-failover', duration: 3000, icon: '🔄' }
       );
     });
     return unsubscribe;

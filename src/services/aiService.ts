@@ -1,5 +1,5 @@
-// Yella AI Service - Intelligent Multi-Model Engine with Automatic Rate-Limit Failover
-// Seamlessly auto-switches Gemini models when quotas or rate limits (HTTP 429 / 503) are exceeded.
+// Yella AI Enterprise Service - Intelligent Multi-Model Engine with Quota Failover
+// Zero-toast-spam, debounced notifications, and rock-solid fallback cascade.
 
 export const GEMINI_MODELS = [
   'gemini-1.5-flash',
@@ -35,7 +35,13 @@ export const onModelSwitch = (listener: ModelSwitchListener) => {
   };
 };
 
+// Debounced single emitter to guarantee zero notification spam
+let lastEmitTime = 0;
 function emitModelSwitch(event: ModelSwitchEvent) {
+  const now = Date.now();
+  if (now - lastEmitTime < 3000) return; // Ignore if emitted in the last 3 seconds
+  lastEmitTime = now;
+
   switchListeners.forEach((fn) => {
     try {
       fn(event);
@@ -68,8 +74,8 @@ export const saveAIConfig = (config: AIProviderConfig) => {
 };
 
 /**
- * Executes a Gemini request with automatic fallback cascade across all available models
- * if a rate limit (HTTP 429), quota exhaustion, or server overload (503) occurs.
+ * Executes a Gemini request with automatic fallback cascade.
+ * Never spams intermediate errors — only emits when a fallback model actually succeeds.
  */
 async function callGeminiWithCascade(
   apiKey: string,
@@ -77,7 +83,11 @@ async function callGeminiWithCascade(
   systemContext: string,
   preferredModel: string
 ): Promise<{ text: string; modelUsed: string; switchedFrom?: string }> {
-  // Build priority chain starting with user's preferred model, followed by the rest
+  // Validate key format first
+  if (!apiKey || apiKey.length < 10) {
+    throw new Error('No valid API key provided');
+  }
+
   const cascadeOrder = [
     preferredModel,
     ...GEMINI_MODELS.filter((m) => m !== preferredModel),
@@ -87,7 +97,6 @@ async function callGeminiWithCascade(
 
   for (let i = 0; i < cascadeOrder.length; i++) {
     const candidateModel = cascadeOrder[i];
-    const nextModel = cascadeOrder[i + 1];
 
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${candidateModel}:generateContent?key=${apiKey}`;
@@ -96,23 +105,29 @@ async function callGeminiWithCascade(
           role: 'user',
           parts: [
             {
-              text: `You are Yella, the personal AI assistant inside SG-Office (Word, Excel, PowerPoint, Gmail). Help the user with high accuracy, clean formatting, and actionable responses.\nContext: ${systemContext}\n\nUser request: ${userPrompt}`,
+              text: `You are Yella, the personal AI assistant inside Microsoft 365 SG-Office (Word, Excel, PowerPoint, Gmail). Help the user with high accuracy, rich Markdown formatting, and direct actions.\nContext: ${systemContext}\n\nUser request: ${userPrompt}`,
             },
           ],
         },
       ];
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout per model
+
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (res.ok) {
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
-          // If we had to switch to another model to succeed, notify and persist
+          // If we had to switch to another model to succeed, notify once and persist
           if (candidateModel !== preferredModel) {
             console.info(`[Yella AI] Auto-switched to model: ${candidateModel} after rate limit.`);
             const currentCfg = getAIConfig();
@@ -121,7 +136,7 @@ async function callGeminiWithCascade(
             emitModelSwitch({
               fromModel: preferredModel,
               toModel: candidateModel,
-              reason: `Rate limit / Quota reached on ${preferredModel}. Auto-switched to ${candidateModel}.`,
+              reason: `Rate limit reached on ${preferredModel}. Auto-switched to ${candidateModel}.`,
               timestamp: new Date(),
             });
 
@@ -136,11 +151,17 @@ async function callGeminiWithCascade(
         }
       }
 
-      // Handle non-OK responses (429 Rate Limit, 503 Overloaded, 404 Model Unsupported)
+      // Check errors
       const errorJson = await res.json().catch(() => ({}));
       const errorStatus = errorJson?.error?.status || '';
       const errorMessage = errorJson?.error?.message || `HTTP ${res.status}`;
       lastErrorMsg = errorMessage;
+
+      // If invalid API key (HTTP 400 with API_KEY_INVALID), stop immediately without spamming other models
+      if (res.status === 400 && (errorMessage.includes('API key') || errorMessage.includes('INVALID_ARGUMENT'))) {
+        console.warn(`[Yella AI] Gemini API key invalid, switching to local autonomous core: ${errorMessage}`);
+        break;
+      }
 
       const isRateLimited =
         res.status === 429 ||
@@ -156,39 +177,20 @@ async function callGeminiWithCascade(
 
       if (isRateLimited || isOverloadedOrUnavailable) {
         console.warn(
-          `[Yella AI] Model "${candidateModel}" hit limit/error (${res.status}: ${errorMessage}). Attempting auto-switch...`
+          `[Yella AI] Model "${candidateModel}" hit quota/limit (${res.status}). Trying next model...`
         );
-
-        if (nextModel) {
-          emitModelSwitch({
-            fromModel: candidateModel,
-            toModel: nextModel,
-            reason: `HTTP ${res.status}: ${errorMessage}`,
-            timestamp: new Date(),
-          });
-        }
-        // Continue to the next model in the cascade loop
+        // Continue silently to next model in cascade without spamming toasts
         continue;
       } else {
-        // If it's a 400 Bad Request (e.g. invalid API key), don't endless loop
-        console.error(`[Yella AI] Gemini API client error on "${candidateModel}":`, errorMessage);
         break;
       }
     } catch (networkErr: any) {
-      console.warn(`[Yella AI] Network failure on "${candidateModel}":`, networkErr);
-      if (nextModel) {
-        emitModelSwitch({
-          fromModel: candidateModel,
-          toModel: nextModel,
-          reason: 'Network/Timeout error',
-          timestamp: new Date(),
-        });
-        continue;
-      }
+      console.warn(`[Yella AI] Network attempt failed on "${candidateModel}":`, networkErr?.message || networkErr);
+      continue;
     }
   }
 
-  throw new Error(`All Gemini models exhausted. Last error: ${lastErrorMsg}`);
+  throw new Error(`All Gemini models exhausted. ${lastErrorMsg}`);
 }
 
 // Main Chat Execution
@@ -206,11 +208,11 @@ export async function queryYellaAI(
       const result = await callGeminiWithCascade(config.apiKey, userPrompt, systemContext, activeModel);
       
       if (result.switchedFrom) {
-        return `${result.text}\n\n> *⚡ Note: Rate limit exceeded on \`${result.switchedFrom}\`. Yella automatically switched to \`${result.modelUsed}\`.*`;
+        return `${result.text}\n\n> *⚡ Note: Rate limit reached on \`${result.switchedFrom}\`. Yella automatically switched to \`${result.modelUsed}\`.*`;
       }
       return result.text;
     } catch (err) {
-      console.warn('[Yella AI] All Gemini models exceeded quota or failed, seamlessly activating local autonomous reasoning engine:', err);
+      console.warn('[Yella AI] Seamlessly activating local autonomous reasoning engine:', err);
     }
   }
 
@@ -219,7 +221,7 @@ export async function queryYellaAI(
     try {
       const endpoint = 'https://api.openai.com/v1/chat/completions';
       const messages = [
-        { role: 'system', content: `You are Yella, a personalized AI assistant inside SG-Office. ${systemContext}` },
+        { role: 'system', content: `You are Yella, a world-class AI copilot inside Microsoft 365 SG-Office. ${systemContext}` },
         ...conversationHistory.slice(-4).map((m) => ({ role: m.role, content: m.content })),
         { role: 'user', content: userPrompt },
       ];
@@ -265,8 +267,8 @@ function generateAutonomousResponse(prompt: string, context: string): string {
   ) {
     const topic =
       prompt.replace(/create a document about|create a document on|write a document on|write a document about|draft a document for/gi, '').trim() ||
-      'Strategic Operational Blueprint';
-    return `### Generated Document Blueprint: "${topic}"\n\nI have generated a structured multi-section document with an executive summary, scope, deliverables, risk framework, and timeline. I have automatically applied this document directly into your active **Word** editor!\n\nOpen the **Word** app from the left menu to format, edit with headings, or export to .docx.`;
+      'Executive Strategic Blueprint';
+    return `### Generated Document: "${topic}"\n\nI have generated a structured multi-tier document with an executive summary, scope, deliverables, risk framework, and timeline. I have automatically applied this document directly into your active **Word** editor!\n\nOpen the **Word** app from the left menu to format, edit with headings, or export to .docx.`;
   }
 
   // CSV / Excel data analysis
@@ -278,7 +280,7 @@ function generateAutonomousResponse(prompt: string, context: string): string {
     lower.includes('budget') ||
     lower.includes('expense')
   ) {
-    return `### Data Analysis & Spreadsheet Model\n\nI have structured an active financial model with dynamic formulas:\n- Range formulas applied: \`=SUM(...)\`, \`=AVERAGE(...)\`\n- Variance metrics calculated: \`=Actual - Budget\`\n- Generated numerical columns compatible with Bar & Pie charts\n\nYour **Excel** worksheet has been updated with these live calculations!`;
+    return `### Data Analysis & Financial Model\n\nI have structured an active financial model with dynamic formulas:\n- Range formulas applied: \`=SUM(...)\`, \`=AVERAGE(...)\`\n- Variance metrics calculated: \`=Actual - Budget\`\n- Generated numerical columns compatible with Bar & Pie charts\n\nYour **Excel** worksheet has been updated with these live calculations!`;
   }
 
   // Presentation deck
@@ -291,9 +293,9 @@ function generateAutonomousResponse(prompt: string, context: string): string {
     const topic =
       prompt.replace(/create a presentation on|create slides about|generate pitch deck for/gi, '').trim() ||
       'Executive Strategy Overview';
-    return `### Presentation Deck Architecture: "${topic}"\n\nI have drafted a 4-part slide presentation:\n1. **Title Slide**: ${topic} Vision & Overview\n2. **Market & Problem Statement**: Current landscape & core challenges\n3. **SG-Office Solution & Metrics**: High velocity, 99.4% precision\n4. **Call to Action**: Execution roadmap & timeline\n\nOpen **PowerPoint** from the left rail to present full-screen!`;
+    return `### Presentation Deck Architecture: "${topic}"\n\nI have drafted a 4-part slide presentation:\n1. **Title Slide**: ${topic} Vision & Overview\n2. **Market & Problem Statement**: Current landscape & core challenges\n3. **Office 365 Solution & Metrics**: High velocity, 99.4% precision\n4. **Call to Action**: Execution roadmap & timeline\n\nOpen **PowerPoint** from the left rail to present full-screen!`;
   }
 
   // General questions & reasoning
-  return `I have analyzed your request regarding: "${prompt}".\n\nAs your personalized assistant Yella inside SG-Office, I can directly execute actions on your behalf:\n- 📝 Write full documents and tables into **Word**\n- 📊 Parse CSV files and build formulas in **Excel**\n- 🎨 Construct slide decks in **PowerPoint**\n- 📬 Compose emails in **Gmail**\n\n💡 *Tip: Connect your free Google Gemini API key to activate live real-time web intelligence with automated model failover.*`;
+  return `I have analyzed your request regarding: "${prompt}".\n\nAs your personalized assistant Yella inside SG-Office 365, I can directly execute actions on your behalf:\n- 📝 Write full documents, tables, and styles into **Word**\n- 📊 Parse CSV files and build formulas in **Excel**\n- 🎨 Construct slide decks in **PowerPoint**\n- 📬 Compose emails in **Gmail**\n\n💡 *Tip: Connect your free Google Gemini API key to activate live real-time web intelligence with automated model failover.*`;
 }

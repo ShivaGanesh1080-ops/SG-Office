@@ -63,7 +63,7 @@ export function Dashboard() {
               Good evening
             </h1>
             <p className="text-xs text-[#605e5c] mt-0.5">
-              SG-Office Workspace • Powered by Yella AI
+              Microsoft 365 Enterprise Workspace • Powered by Yella AI
             </p>
           </div>
 
