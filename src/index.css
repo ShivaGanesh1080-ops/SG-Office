@@ -1,0 +1,288 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Microsoft 365 Clean White Design System */
+    --ms-bg: #f3f2f1;              /* Office canvas background */
+    --ms-surface: #ffffff;         /* Pure white cards and paper */
+    --ms-surface-hover: #f8f9fa;   /* Hover state */
+    --ms-surface-active: #edebe9;  /* Active button/tab */
+    --ms-ribbon-bg: #ffffff;       /* Clean ribbon white */
+    --ms-ribbon-tab: #faf9f8;      /* Tab inactive */
+    --ms-border: #edebe9;          /* Subtle light gray border */
+    --ms-border-strong: #d2d0ce;   /* Focus / division border */
+    --ms-border-light: #f3f2f1;    /* Very light separator */
+    
+    /* Text colors */
+    --ms-text-primary: #201f1e;    /* Fluent primary text */
+    --ms-text-secondary: #605e5c;  /* Subtle label */
+    --ms-text-muted: #8a8886;      /* Disabled / caption */
+    
+    /* Office App Branding Accents */
+    --ms-word: #185abd;            /* Word Cobalt Blue */
+    --ms-word-hover: #106ebe;
+    --ms-word-light: #e8f0fe;
+    
+    --ms-excel: #107c41;           /* Excel Emerald Green */
+    --ms-excel-hover: #0e6a37;
+    --ms-excel-light: #e6f4ea;
+    
+    --ms-powerpoint: #c43e1c;      /* PowerPoint Orange/Coral */
+    --ms-powerpoint-hover: #a83214;
+    --ms-powerpoint-light: #fce8e6;
+    
+    --ms-outlook: #0078d4;         /* Outlook Sky Blue */
+    --ms-onenote: #7719aa;         /* OneNote Royal Purple */
+    --ms-copilot-start: #8a44f8;   /* Copilot gradient start */
+    --ms-copilot-mid: #6264a7;     /* Copilot mid */
+    --ms-copilot-end: #0078d4;     /* Copilot gradient end */
+
+    /* Generic system tokens */
+    --nova-bg: #f3f2f1;
+    --nova-bg-secondary: #ffffff;
+    --nova-bg-tertiary: #f8f9fa;
+    --nova-surface: #ffffff;
+    --nova-border: #edebe9;
+    --nova-text: #201f1e;
+    --nova-text-secondary: #605e5c;
+    --nova-text-muted: #8a8886;
+    --nova-primary: #185abd;
+    --nova-primary-hover: #106ebe;
+    --nova-primary-light: #e8f0fe;
+    --nova-accent: #8a44f8;
+    --nova-accent-light: #f3e8ff;
+    --nova-success: #107c41;
+    --nova-warning: #d83b01;
+    --nova-danger: #a80000;
+    --nova-info: #0078d4;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: var(--ms-bg);
+    color: var(--ms-text-primary);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Microsoft Office Clean Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #f3f2f1;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #c8c6c4;
+    border-radius: 4px;
+    border: 2px solid #f3f2f1;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #979593;
+  }
+}
+
+/* Microsoft Word A4 Page Styling */
+.word-page {
+  width: 816px; /* standard 8.5in at 96 DPI */
+  min-height: 1056px; /* standard 11in at 96 DPI */
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e1dfdd;
+  margin: 24px auto 48px auto;
+  padding: 72px 80px; /* 1-inch standard margins */
+  border-radius: 2px;
+}
+
+/* TipTap Editor in Word Page */
+.tiptap {
+  outline: none;
+  min-height: 850px;
+  color: #201f1e;
+  font-family: 'Aptos', 'Calibri', 'Segoe UI', sans-serif;
+  font-size: 11pt;
+  line-height: 1.5;
+}
+
+.tiptap p {
+  margin-bottom: 0.6rem;
+}
+
+.tiptap h1 {
+  font-size: 18pt;
+  font-weight: 700;
+  color: #185abd;
+  margin-top: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.tiptap h2 {
+  font-size: 14pt;
+  font-weight: 600;
+  color: #2b579a;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.tiptap h3 {
+  font-size: 12pt;
+  font-weight: 600;
+  color: #333333;
+  margin-top: 0.8rem;
+  margin-bottom: 0.3rem;
+}
+
+.tiptap ul, .tiptap ol {
+  padding-left: 2rem;
+  margin-bottom: 0.6rem;
+}
+
+.tiptap li {
+  margin-bottom: 0.2rem;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid #185abd;
+  padding-left: 1rem;
+  margin-left: 0;
+  color: #605e5c;
+  font-style: italic;
+}
+
+.tiptap code {
+  background: #f3f2f1;
+  border: 1px solid #e1dfdd;
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.9em;
+  color: #a80000;
+}
+
+.tiptap pre {
+  background: #f8f9fa !important;
+  border: 1px solid #e1dfdd;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  overflow-x: auto;
+}
+
+.tiptap pre code {
+  background: none;
+  border: none;
+  color: #201f1e;
+}
+
+.tiptap table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.tiptap table td, .tiptap table th {
+  border: 1px solid #d2d0ce;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.tiptap table th {
+  background: #f3f2f1;
+  font-weight: 600;
+}
+
+.tiptap .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #a19f9d;
+  pointer-events: none;
+  height: 0;
+}
+
+/* Office Ribbon Group Container */
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2px 6px;
+  border-right: 1px solid #edebe9;
+  height: 82px;
+}
+
+.ribbon-label {
+  font-size: 10px;
+  color: #8a8886;
+  text-align: center;
+  margin-top: auto;
+  padding-top: 2px;
+  user-select: none;
+}
+
+/* Excel Spreadsheet Cells */
+.excel-grid {
+  background: #ffffff;
+  user-select: none;
+}
+
+.excel-header-cell {
+  background: #f8f9fa;
+  border-right: 1px solid #e1dfdd;
+  border-bottom: 1px solid #d2d0ce;
+  font-size: 11px;
+  color: #605e5c;
+  text-align: center;
+  font-weight: 600;
+  padding: 4px;
+}
+
+.excel-cell {
+  border-right: 1px solid #edebe9;
+  border-bottom: 1px solid #edebe9;
+  background: #ffffff;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: #201f1e;
+  outline: none;
+}
+
+.excel-cell.selected {
+  border: 2px solid #107c41 !important;
+  z-index: 10;
+  position: relative;
+}
+
+/* Microsoft Fluent Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.18s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.22s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+.copilot-gradient {
+  background: linear-gradient(135deg, #8a44f8 0%, #0078d4 50%, #00b7df 100%);
+}
+
+.copilot-text {
+  background: linear-gradient(135deg, #8a44f8 0%, #0078d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
