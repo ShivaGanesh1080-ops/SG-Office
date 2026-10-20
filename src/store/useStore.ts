@@ -22,6 +22,12 @@ interface StoreActions {
   activeDocTitle: string;
   setActiveDocTitle: (title: string) => void;
   
+  activeSheetTitle: string;
+  setActiveSheetTitle: (title: string) => void;
+  
+  activePresentationTitle: string;
+  setActivePresentationTitle: (title: string) => void;
+  
   spreadsheetData: Record<string, string>;
   setSpreadsheetData: (data: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
   
@@ -30,13 +36,14 @@ interface StoreActions {
 }
 
 const initialSpreadsheet: Record<string, string> = {
-  'A1': 'Item Description', 'B1': 'Category', 'C1': 'Unit Price ($)', 'D1': 'Units Sold', 'E1': 'Gross Total ($)', 'F1': 'Profit Margin',
-  'A2': 'Cloud Infrastructure Pro', 'B2': 'Software', 'C2': '120', 'D2': '450', 'E2': '=C2*D2', 'F2': '65%',
-  'A3': 'AI Assistant Annual Pass', 'B3': 'Subscription', 'C3': '240', 'D3': '320', 'E3': '=C3*D3', 'F3': '82%',
-  'A4': 'Security Compliance Suite', 'B4': 'Enterprise', 'C4': '500', 'D4': '85', 'E4': '=C4*D4', 'F4': '70%',
-  'A5': 'Developer API Compute', 'B5': 'Add-on', 'C5': '50', 'D5': '920', 'E5': '=C5*D5', 'F5': '55%',
-  'A6': '', 'B6': '', 'C6': '', 'D6': '', 'E6': '', 'F6': '',
-  'A7': 'Total Revenue', 'B7': '', 'C7': '', 'D7': '=SUM(D2:D5)', 'E7': '=SUM(E2:E5)', 'F7': 'Average Margin',
+  'A1': 'Product / Service', 'B1': 'Category', 'C1': 'Unit Price ($)', 'D1': 'Units Sold', 'E1': 'Gross Revenue ($)', 'F1': 'COGS ($)', 'G1': 'Net Profit ($)', 'H1': 'Profit Margin',
+  'A2': 'Cloud Infrastructure Pro', 'B2': 'Cloud Services', 'C2': '120', 'D2': '450', 'E2': '=C2*D2', 'F2': '=E2*0.35', 'G2': '=E2-F2', 'H2': '=G2/E2',
+  'A3': 'AI Assistant Annual Pass', 'B3': 'AI & ML', 'C3': '240', 'D3': '320', 'E3': '=C3*D3', 'F3': '=E3*0.25', 'G3': '=E3-F3', 'H3': '=G3/E3',
+  'A4': 'Security Compliance Suite', 'B4': 'Cybersecurity', 'C4': '500', 'D4': '85', 'E4': '=C4*D4', 'F4': '=E4*0.30', 'G4': '=E4-F4', 'H4': '=G4/E4',
+  'A5': 'Developer API Compute', 'B5': 'Developer Tools', 'C5': '50', 'D5': '920', 'E5': '=C5*D5', 'F5': '=E5*0.40', 'G5': '=E5-F5', 'H5': '=G5/E5',
+  'A6': 'Enterprise Dedicated Support', 'B6': 'Consulting', 'C6': '800', 'D6': '40', 'E6': '=C6*D6', 'F6': '=E6*0.45', 'G6': '=E6-F6', 'H6': '=G6/E6',
+  'A7': '', 'B7': '', 'C7': '', 'D7': '', 'E7': '', 'F7': '', 'G7': '', 'H7': '',
+  'A8': 'Total / Summary', 'B8': '5 Active Offerings', 'C8': '=AVERAGE(C2:C6)', 'D8': '=SUM(D2:D6)', 'E8': '=SUM(E2:E6)', 'F8': '=SUM(F2:F6)', 'G8': '=SUM(G2:G6)', 'H8': '=AVERAGE(H2:H6)',
 };
 
 // Load saved data from localStorage if available
@@ -102,8 +109,14 @@ export const useStore = create<AppState & StoreActions>((set) => ({
 
   activeDocContent: '',
   setActiveDocContent: (content) => set({ activeDocContent: content }),
-  activeDocTitle: 'Untitled Document.docx',
+  activeDocTitle: 'Executive Project Charter.docx',
   setActiveDocTitle: (title) => set({ activeDocTitle: title }),
+  
+  activeSheetTitle: 'Financial Model & Revenue Projections.xlsx',
+  setActiveSheetTitle: (title) => set({ activeSheetTitle: title }),
+  
+  activePresentationTitle: 'Enterprise Strategy Deck.pptx',
+  setActivePresentationTitle: (title) => set({ activePresentationTitle: title }),
 
   spreadsheetData: (() => {
     try {

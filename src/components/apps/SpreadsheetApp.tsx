@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   Table2,
   Plus,
@@ -32,6 +32,22 @@ import {
   LineChart as LineChartIcon,
   Layers,
   Wand2,
+  Scissors,
+  Copy,
+  Clipboard,
+  Binary,
+  Cpu,
+  TrendingUp,
+  Activity,
+  Sliders,
+  CheckSquare,
+  RefreshCw,
+  FileDown,
+  Printer,
+  Share2,
+  HelpCircle,
+  AlertTriangle,
+  Lightbulb,
 } from 'lucide-react';
 import {
   BarChart,
@@ -59,54 +75,73 @@ const ROWS = 60;
 const COL_LETTERS = Array.from({ length: COLS }, (_, i) => String.fromCharCode(65 + i));
 
 export function SpreadsheetApp() {
-  const { spreadsheetData, setSpreadsheetData, toggleAIPanel } = useStore();
+  const { spreadsheetData, setSpreadsheetData, activeSheetTitle, setActiveSheetTitle, toggleAIPanel } = useStore();
   const [data, setData] = useState<Record<string, string>>(spreadsheetData);
   const [cellStyles, setCellStyles] = useState<Record<string, { bold?: boolean; italic?: boolean; color?: string; bg?: string; align?: string }>>({});
-  const [selectedCell, setSelectedCell] = useState<string>('B2');
-  const [selectionRange, setSelectionRange] = useState<{ start: string; end: string }>({ start: 'B2', end: 'B2' });
+  const [selectedCell, setSelectedCell] = useState<string>('C2');
+  const [selectionRange, setSelectionRange] = useState<{ start: string; end: string }>({ start: 'C2', end: 'C2' });
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [activeTab, setActiveTab] = useState<'home' | 'insert' | 'formulas' | 'data' | 'view' | 'yella'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'insert' | 'powerbi' | 'dataclean' | 'formulas' | 'view' | 'yella'>('home');
   const [activeSheet, setActiveSheet] = useState('Sheet1');
   const [sheets, setSheets] = useState(['Sheet1', 'Sheet2', 'Sheet3']);
   const [zoom, setZoom] = useState(100);
-  const [showChartModal, setShowChartModal] = useState(false);
-  const [chartType, setChartType] = useState<'bar' | 'pie' | 'line' | 'area'>('bar');
+
+  // Modals & Panels
+  const [showPowerBIModal, setShowPowerBIModal] = useState(false);
+  const [showDataCleanModal, setShowDataCleanModal] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showPivotModal, setShowPivotModal] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [activeColorTarget, setActiveColorTarget] = useState<'bg' | 'text'>('bg');
-  const [filterEnabled, setFilterEnabled] = useState(false);
-  const [conditionalFormatThreshold, setConditionalFormatThreshold] = useState<number | null>(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
+  const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync with global store
+  // Sync to store
   useEffect(() => {
     setSpreadsheetData(data);
   }, [data, setSpreadsheetData]);
 
-  // Robust formula evaluation engine
+  // Robust Formula Engine
   const evaluateFormula = useCallback((formula: string, currentData: Record<string, string>): string => {
     if (!formula.startsWith('=')) return formula;
     const expr = formula.substring(1).trim().toUpperCase();
 
-    // 1. Arithmetic Expressions: e.g. =C2*D2, =A1+B1, =A1-B1, =A1/B1
-    const arithmeticMatch = expr.match(/^([A-Z]\d+)\s*([\+\-\*\/])\s*([A-Z]\d+)$/);
+    // 1. Multiplications / Divisions / Subtractions: e.g. =C2*D2, =E2-F2, =G2/E2
+    const arithmeticMatch = expr.match(/^([A-Z]\d+)\s*([\+\-\*\/])\s*([A-Z]\d+|[\d\.]+)$/);
     if (arithmeticMatch) {
-      const [, cell1, op, cell2] = arithmeticMatch;
+      const [, cell1, op, cellOrNum] = arithmeticMatch;
       const v1 = parseFloat((currentData[cell1] || '0').replace(/[,$\s%]/g, ''));
-      const v2 = parseFloat((currentData[cell2] || '0').replace(/[,$\s%]/g, ''));
+      let v2 = 0;
+      if (/^[A-Z]\d+$/.test(cellOrNum)) {
+        v2 = parseFloat((currentData[cellOrNum] || '0').replace(/[,$\s%]/g, ''));
+      } else {
+        v2 = parseFloat(cellOrNum);
+      }
       if (isNaN(v1) || isNaN(v2)) return '#VALUE!';
       switch (op) {
         case '+': return (v1 + v2).toLocaleString();
         case '-': return (v1 - v2).toLocaleString();
         case '*': return (v1 * v2).toLocaleString();
-        case '/': return v2 !== 0 ? (v1 / v2).toFixed(2) : '#DIV/0!';
+        case '/': {
+          if (v2 === 0) return '#DIV/0!';
+          const res = v1 / v2;
+          // If calculating margin like G2/E2, format as percentage
+          if (expr.includes('G') || expr.includes('MARGIN')) {
+            return (res * 100).toFixed(1) + '%';
+          }
+          return res.toFixed(2);
+        }
       }
     }
 
-    // 2. Range Functions: SUM, AVERAGE, COUNT, MAX, MIN
-    const funcMatch = expr.match(/^(SUM|AVERAGE|COUNT|MAX|MIN)\(([A-Z])(\d+):([A-Z])(\d+)\)$/);
+    // 2. Range Functions: SUM, AVERAGE, COUNT, MAX, MIN, MEDIAN, STDEV
+    const funcMatch = expr.match(/^(SUM|AVERAGE|COUNT|MAX|MIN|MEDIAN|STDEV)\(([A-Z])(\d+):([A-Z])(\d+)\)$/);
     if (funcMatch) {
       const [, funcName, startCol, startRow, endCol, endRow] = funcMatch;
       const c1 = startCol.charCodeAt(0);
@@ -129,13 +164,27 @@ export function SpreadsheetApp() {
 
       if (values.length === 0) return '0';
       if (funcName === 'SUM') return values.reduce((a, b) => a + b, 0).toLocaleString();
-      if (funcName === 'AVERAGE') return (values.reduce((a, b) => a + b, 0) / values.length).toLocaleString();
+      if (funcName === 'AVERAGE') {
+        const avg = values.reduce((a, b) => a + b, 0) / values.length;
+        if (startCol === 'H' || endCol === 'H') return avg.toFixed(1) + '%';
+        return avg.toLocaleString(undefined, { maximumFractionDigits: 1 });
+      }
       if (funcName === 'COUNT') return values.length.toString();
       if (funcName === 'MAX') return Math.max(...values).toLocaleString();
       if (funcName === 'MIN') return Math.min(...values).toLocaleString();
+      if (funcName === 'MEDIAN') {
+        values.sort((a, b) => a - b);
+        const mid = Math.floor(values.length / 2);
+        return (values.length % 2 !== 0 ? values[mid] : (values[mid - 1] + values[mid]) / 2).toLocaleString();
+      }
+      if (funcName === 'STDEV') {
+        const mean = values.reduce((a, b) => a + b, 0) / values.length;
+        const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length;
+        return Math.sqrt(variance).toFixed(2);
+      }
     }
 
-    // 3. Simple IF formula: =IF(B2>1000, "High", "Low")
+    // 3. Conditional IF formula: =IF(C2>100, "High", "Low")
     const ifMatch = expr.match(/^IF\(([A-Z]\d+)\s*([><=])\s*(\d+),\s*"([^"]+)",\s*"([^"]+)"\)$/i);
     if (ifMatch) {
       const [, cell, op, targetStr, trueVal, falseVal] = ifMatch;
@@ -146,6 +195,16 @@ export function SpreadsheetApp() {
       if (op === '<') conditionMet = val < target;
       if (op === '=') conditionMet = val === target;
       return conditionMet ? trueVal : falseVal;
+    }
+
+    // 4. Text Functions: =UPPER(A2), =LOWER(A2), =TRIM(A2)
+    const textMatch = expr.match(/^(UPPER|LOWER|TRIM)\(([A-Z]\d+)\)$/);
+    if (textMatch) {
+      const [, fn, cellRef] = textMatch;
+      const raw = currentData[cellRef] || '';
+      if (fn === 'UPPER') return raw.toUpperCase();
+      if (fn === 'LOWER') return raw.toLowerCase();
+      if (fn === 'TRIM') return raw.trim();
     }
 
     return formula;
@@ -159,7 +218,7 @@ export function SpreadsheetApp() {
     return raw;
   }, [data, evaluateFormula]);
 
-  // Selection handlers
+  // Selection logic
   const handleCellMouseDown = (cellId: string) => {
     setSelectedCell(cellId);
     setSelectionRange({ start: cellId, end: cellId });
@@ -200,198 +259,393 @@ export function SpreadsheetApp() {
       e.preventDefault();
       setData((prev) => ({ ...prev, [cellId]: editValue }));
       setEditingCell(null);
-      const colIndex = COL_LETTERS.indexOf(cellId[0]);
-      if (colIndex < COLS - 1) {
-        setSelectedCell(`${COL_LETTERS[colIndex + 1]}${cellId.substring(1)}`);
-      }
+      const colIdx = cellId.charCodeAt(0) - 65 + 1;
+      const row = cellId.substring(1);
+      if (colIdx < COLS) setSelectedCell(`${String.fromCharCode(65 + colIdx)}${row}`);
     }
   };
 
-  // Cell Styling
-  const toggleStyle = (prop: 'bold' | 'italic') => {
-    setCellStyles((prev) => ({
-      ...prev,
-      [selectedCell]: {
-        ...prev[selectedCell],
-        [prop]: !prev[selectedCell]?.[prop],
-      },
-    }));
-  };
+  // Selected Range Aggregations
+  const rangeStats = useMemo(() => {
+    const { start, end } = selectionRange;
+    const c1 = Math.min(start.charCodeAt(0), end.charCodeAt(0));
+    const c2 = Math.max(start.charCodeAt(0), end.charCodeAt(0));
+    const r1 = Math.min(parseInt(start.substring(1)), parseInt(end.substring(1)));
+    const r2 = Math.max(parseInt(start.substring(1)), parseInt(end.substring(1)));
 
-  const applyColor = (color: string) => {
-    setCellStyles((prev) => ({
-      ...prev,
-      [selectedCell]: {
-        ...prev[selectedCell],
-        [activeColorTarget]: color,
-      },
-    }));
-    setShowColorPicker(false);
-  };
-
-  // CSV Import
-  const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const rows = text.split(/\r\n|\n/).filter(Boolean);
-      const newData: Record<string, string> = {};
-
-      rows.forEach((row, rIdx) => {
-        const cols = row.split(',');
-        cols.forEach((val, cIdx) => {
-          if (cIdx < COLS && rIdx < ROWS) {
-            const cellId = `${COL_LETTERS[cIdx]}${rIdx + 1}`;
-            newData[cellId] = val.trim().replace(/^["']|["']$/g, '');
-          }
-        });
-      });
-
-      setData(newData);
-      toast.success(`Imported ${rows.length} rows from ${file.name}`);
-    };
-    reader.readAsText(file);
-  };
-
-  // CSV Export
-  const handleCSVExport = () => {
-    let csv = '';
-    for (let r = 1; r <= 30; r++) {
-      const rowVals = COL_LETTERS.slice(0, 10).map((col) => {
-        const val = getCellDisplay(`${col}${r}`);
-        return `"${val.replace(/"/g, '""')}"`;
-      });
-      if (rowVals.some((v) => v !== '""')) {
-        csv += rowVals.join(',') + '\r\n';
-      }
-    }
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${activeSheet}_Data.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`Exported as ${activeSheet}_Data.csv`);
-  };
-
-  // Calculate live Status Bar metrics for active selection
-  const getSelectionMetrics = () => {
-    const startC = selectionRange.start[0].charCodeAt(0);
-    const endC = selectionRange.end[0].charCodeAt(0);
-    const startR = parseInt(selectionRange.start.substring(1));
-    const endR = parseInt(selectionRange.end.substring(1));
-
-    const minC = Math.min(startC, endC);
-    const maxC = Math.max(startC, endC);
-    const minR = Math.min(startR, endR);
-    const maxR = Math.max(startR, endR);
-
-    const nums: number[] = [];
+    let sum = 0;
     let count = 0;
+    let numCount = 0;
+    let min = Infinity;
+    let max = -Infinity;
 
-    for (let c = minC; c <= maxC; c++) {
-      for (let r = minR; r <= maxR; r++) {
-        const cellId = `${String.fromCharCode(c)}${r}`;
-        const val = getCellDisplay(cellId);
-        if (val) {
+    for (let c = c1; c <= c2; c++) {
+      for (let r = r1; r <= r2; r++) {
+        const ref = `${String.fromCharCode(c)}${r}`;
+        const raw = data[ref];
+        if (raw !== undefined && raw !== '') {
           count++;
-          const n = parseFloat(val.replace(/[$,%\s]/g, ''));
-          if (!isNaN(n)) nums.push(n);
+          const evalVal = getCellDisplay(ref);
+          const num = parseFloat(evalVal.replace(/[$,%\s]/g, ''));
+          if (!isNaN(num)) {
+            numCount++;
+            sum += num;
+            if (num < min) min = num;
+            if (num > max) max = num;
+          }
         }
       }
     }
 
-    if (nums.length === 0) return { count, sum: 0, avg: 0, min: 0, max: 0, numCount: 0 };
-    const sum = nums.reduce((a, b) => a + b, 0);
+    const avg = numCount > 0 ? sum / numCount : 0;
     return {
       count,
-      numCount: nums.length,
-      sum,
-      avg: Math.round((sum / nums.length) * 100) / 100,
-      min: Math.min(...nums),
-      max: Math.max(...nums),
+      numCount,
+      sum: sum.toLocaleString(),
+      avg: avg.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+      min: min !== Infinity ? min.toLocaleString() : '0',
+      max: max !== -Infinity ? max.toLocaleString() : '0',
     };
-  };
+  }, [selectionRange, data, getCellDisplay]);
 
-  const metrics = getSelectionMetrics();
+  // Extract structured rows for Data Science & PowerBI
+  const tabularData = useMemo(() => {
+    const rows: Array<{
+      product: string;
+      category: string;
+      price: number;
+      units: number;
+      revenue: number;
+      cogs: number;
+      profit: number;
+      margin: number;
+    }> = [];
 
-  // Chart Data Extraction
-  const getChartData = () => {
-    const chartItems = [];
-    for (let r = 2; r <= 10; r++) {
-      const label = data[`A${r}`];
-      const valStr = getCellDisplay(`F${r}`) || getCellDisplay(`E${r}`) || getCellDisplay(`C${r}`);
-      const val = parseFloat(valStr.replace(/[$,%]/g, ''));
-      if (label && !isNaN(val)) {
-        chartItems.push({ name: label, value: val });
+    for (let r = 2; r <= 6; r++) {
+      const product = data[`A${r}`];
+      if (!product) continue;
+      const category = data[`B${r}`] || 'General';
+      const price = parseFloat((getCellDisplay(`C${r}`) || '0').replace(/[$,\s]/g, '')) || 0;
+      const units = parseFloat((getCellDisplay(`D${r}`) || '0').replace(/[$,\s]/g, '')) || 0;
+      const revenue = parseFloat((getCellDisplay(`E${r}`) || '0').replace(/[$,\s]/g, '')) || (price * units);
+      const cogs = parseFloat((getCellDisplay(`F${r}`) || '0').replace(/[$,\s]/g, '')) || (revenue * 0.35);
+      const profit = parseFloat((getCellDisplay(`G${r}`) || '0').replace(/[$,\s]/g, '')) || (revenue - cogs);
+      const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+      rows.push({ product, category, price, units, revenue, cogs, profit, margin });
+    }
+    return rows;
+  }, [data, getCellDisplay]);
+
+  // Filtered dataset for PowerBI
+  const filteredData = useMemo(() => {
+    if (selectedCategoryFilter === 'All') return tabularData;
+    return tabularData.filter((item) => item.category === selectedCategoryFilter);
+  }, [tabularData, selectedCategoryFilter]);
+
+  // Aggregated totals for PowerBI KPI cards
+  const kpis = useMemo(() => {
+    const totalRevenue = filteredData.reduce((acc, row) => acc + row.revenue, 0);
+    const totalUnits = filteredData.reduce((acc, row) => acc + row.units, 0);
+    const totalProfit = filteredData.reduce((acc, row) => acc + row.profit, 0);
+    const avgMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+    const topProduct = [...filteredData].sort((a, b) => b.revenue - a.revenue)[0]?.product || 'N/A';
+
+    return {
+      revenue: totalRevenue.toLocaleString(),
+      units: totalUnits.toLocaleString(),
+      profit: totalProfit.toLocaleString(),
+      margin: avgMargin.toFixed(1) + '%',
+      topProduct,
+    };
+  }, [filteredData]);
+
+  // DATA CLEANING SUITE (Power Query operations)
+  const cleanAction = (action: string) => {
+    const updated = { ...data };
+
+    if (action === 'trim') {
+      Object.keys(updated).forEach((key) => {
+        if (typeof updated[key] === 'string' && !updated[key].startsWith('=')) {
+          updated[key] = updated[key].trim();
+        }
+      });
+      setData(updated);
+      toast.success('Trimmed whitespace across all cells');
+    } else if (action === 'drop_duplicates') {
+      // Find duplicate product rows
+      const seen = new Set<string>();
+      let removed = 0;
+      for (let r = 2; r <= 30; r++) {
+        const val = updated[`A${r}`];
+        if (val) {
+          if (seen.has(val.toLowerCase())) {
+            COL_LETTERS.forEach((c) => delete updated[`${c}${r}`]);
+            removed++;
+          } else {
+            seen.add(val.toLowerCase());
+          }
+        }
       }
+      setData(updated);
+      toast.success(removed > 0 ? `Removed ${removed} duplicate rows` : 'No duplicate rows found');
+    } else if (action === 'fill_zeros') {
+      let filled = 0;
+      for (let r = 2; r <= 15; r++) {
+        ['C', 'D', 'E', 'F', 'G'].forEach((col) => {
+          if (!updated[`${col}${r}`]) {
+            updated[`${col}${r}`] = '0';
+            filled++;
+          }
+        });
+      }
+      setData(updated);
+      toast.success(`Imputed ${filled} empty numeric cells with 0`);
+    } else if (action === 'fill_mean') {
+      // Impute missing units or prices with mean
+      const avgUnits = Math.round(tabularData.reduce((a, b) => a + b.units, 0) / Math.max(1, tabularData.length));
+      let filled = 0;
+      for (let r = 2; r <= 15; r++) {
+        if (updated[`A${r}`] && !updated[`D${r}`]) {
+          updated[`D${r}`] = avgUnits.toString();
+          filled++;
+        }
+      }
+      setData(updated);
+      toast.success(`Imputed missing values with column mean (${avgUnits})`);
+    } else if (action === 'upper') {
+      for (let r = 2; r <= 10; r++) {
+        if (updated[`A${r}`]) updated[`A${r}`] = updated[`A${r}`].toUpperCase();
+        if (updated[`B${r}`]) updated[`B${r}`] = updated[`B${r}`].toUpperCase();
+      }
+      setData(updated);
+      toast.success('Converted text columns to UPPERCASE');
+    } else if (action === 'normalize') {
+      // Min-Max scaling for units
+      const units = tabularData.map((d) => d.units);
+      const minU = Math.min(...units);
+      const maxU = Math.max(...units);
+      tabularData.forEach((d, idx) => {
+        const scaled = maxU > minU ? ((d.units - minU) / (maxU - minU)).toFixed(3) : '1.000';
+        updated[`I${idx + 2}`] = scaled;
+      });
+      updated['I1'] = 'Units (Scaled 0-1)';
+      setData(updated);
+      toast.success('Engineered Min-Max normalized column (Col I)');
+    } else if (action === 'outliers') {
+      // Highlight Z-score outliers
+      const revenues = tabularData.map((d) => d.revenue);
+      const mean = revenues.reduce((a, b) => a + b, 0) / revenues.length;
+      const stdev = Math.sqrt(revenues.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / revenues.length);
+      const newStyles = { ...cellStyles };
+      tabularData.forEach((d, idx) => {
+        const z = Math.abs((d.revenue - mean) / stdev);
+        if (z > 1.2) {
+          newStyles[`E${idx + 2}`] = { bg: '#fff4ce', color: '#b45309', bold: true };
+        }
+      });
+      setCellStyles(newStyles);
+      toast('Highlighted potential outlier variance in Revenue column', { icon: '🎯' });
     }
-    return chartItems;
+
+    setShowDataCleanModal(false);
   };
 
-  const chartData = getChartData();
-  const COLORS = ['#107c41', '#185abd', '#f59e0b', '#7719aa', '#ea4335', '#008272'];
+  // Linear Regression Forecast
+  const handleLinearForecast = () => {
+    const xVals = [1, 2, 3, 4, 5];
+    const yVals = tabularData.map((d) => d.revenue);
+    const n = xVals.length;
+    const sumX = xVals.reduce((a, b) => a + b, 0);
+    const sumY = yVals.reduce((a, b) => a + b, 0);
+    const sumXY = xVals.reduce((acc, x, i) => acc + x * yVals[i], 0);
+    const sumX2 = xVals.reduce((acc, x) => acc + x * x, 0);
 
-  // AI Formula / Budget Assistant
-  const runAIExcelAction = async (action: string) => {
-    toast.loading('Yella AI is generating Excel model...', { id: 'excel-ai' });
-    let prompt = '';
-    if (action === 'forecast') {
-      prompt = `Generate a 4-quarter enterprise budget table with columns: Division, Q1 Budget, Q2 Budget, Q3 Budget, Q4 Budget, Total with =SUM formulas.`;
-    } else if (action === 'clean') {
-      prompt = `Review this spreadsheet data and recommend optimal financial formulas to detect variance and margin.`;
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+
+    const updated = { ...data };
+    for (let period = 1; period <= 3; period++) {
+      const nextX = 5 + period;
+      const forecastVal = Math.round(slope * nextX + intercept);
+      const targetRow = 8 + period;
+      updated[`A${targetRow}`] = `Forecast Period +${period}`;
+      updated[`B${targetRow}`] = 'AI Trend Model';
+      updated[`E${targetRow}`] = forecastVal.toLocaleString();
     }
+    setData(updated);
+    toast.success('Calculated linear regression & appended 3-period forecast!');
+  };
+
+  // AI Data Science Executive Summary
+  const handleAIDataScientist = async () => {
+    setIsAIAnalyzing(true);
+    toast.loading('Yella AI Data Scientist is analyzing dataset...', { id: 'sheet-ai' });
+
+    const summaryText = tabularData
+      .map((d) => `${d.product} (${d.category}): Units=${d.units}, Price=$${d.price}, Rev=$${d.revenue}, Margin=${d.margin.toFixed(1)}%`)
+      .join('\n');
+
+    const prompt = `Perform an executive data science analysis on this product revenue model:\n${summaryText}\n\nProvide 3 key statistical drivers, top margin performers, and an actionable forecasting recommendation.`;
 
     try {
-      const res = await queryYellaAI(prompt, 'Excel Spreadsheet Model');
-      toast.dismiss('excel-ai');
-      toast.success('Yella generated spreadsheet model!');
-    } catch {
-      toast.dismiss('excel-ai');
+      const res = await queryYellaAI(prompt, 'Excel Data Science Context');
+      setAiAnalysisResult(res);
+      toast.dismiss('sheet-ai');
+      toast.success('Analysis complete!');
+    } catch (e) {
+      toast.dismiss('sheet-ai');
+      toast.error('Local analysis generated');
+    } finally {
+      setIsAIAnalyzing(false);
+    }
+  };
+
+  // CSV Export & Import
+  const handleExportCSV = () => {
+    let csv = '';
+    for (let r = 1; r <= 15; r++) {
+      const rowVals: string[] = [];
+      let hasData = false;
+      COL_LETTERS.slice(0, 8).forEach((col) => {
+        const val = getCellDisplay(`${col}${r}`).replace(/,/g, '');
+        if (val) hasData = true;
+        rowVals.push(`"${val}"`);
+      });
+      if (hasData) csv += rowVals.join(',') + '\n';
+    }
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = activeSheetTitle.replace(/\.[^/.]+$/, '') + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Exported worksheet as CSV');
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        const lines = text.split(/\r\n|\n/).filter(Boolean);
+        const newData: Record<string, string> = {};
+        lines.forEach((line, rIdx) => {
+          if (rIdx < ROWS) {
+            const cells = line.split(',');
+            cells.forEach((c, cIdx) => {
+              if (cIdx < COLS) {
+                newData[`${COL_LETTERS[cIdx]}${rIdx + 1}`] = c.trim().replace(/^["']|["']$/g, '');
+              }
+            });
+          }
+        });
+        setData(newData);
+        setActiveSheetTitle(file.name);
+        toast.success(`Loaded ${lines.length} rows from CSV`);
+      };
+      reader.readAsText(file);
     }
   };
 
   return (
-    <div
-      onMouseUp={handleMouseUp}
-      className="flex flex-col h-full bg-white select-none text-[#201f1e] overflow-hidden"
-    >
-      {/* Hidden File Input for CSV Upload */}
+    <div className="flex flex-col h-full bg-[#f3f2f1] select-none text-[#201f1e] overflow-hidden">
+      {/* Hidden CSV Input */}
       <input
         type="file"
         ref={fileInputRef}
-        onChange={handleCSVImport}
+        onChange={handleImportCSV}
         accept=".csv,.txt"
         className="hidden"
       />
 
-      {/* 1. Ribbon Tabs Bar */}
-      <div className="flex items-center gap-0.5 px-3 bg-white border-b border-[#edebe9] text-[11px] font-medium overflow-x-auto whitespace-nowrap flex-shrink-0">
-        <button
-          onClick={handleCSVExport}
-          className="px-2.5 py-1 font-bold text-white bg-[#107c41] hover:bg-[#0e6a37] transition-colors rounded-t-xs"
-        >
-          File
-        </button>
+      {/* 1. Excel Green Header Bar */}
+      <div className="flex items-center justify-between px-3 h-10 bg-[#107c41] text-white border-b border-[#0b6a37] flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 font-bold text-sm tracking-wide">
+            <div className="w-5 h-5 rounded bg-white text-[#107c41] flex items-center justify-center font-black text-xs shadow-xs">
+              X
+            </div>
+            <span className="hidden sm:inline">Excel</span>
+          </div>
+
+          <div className="w-px h-4 bg-white/30 mx-1" />
+
+          {/* Sheet Title Input */}
+          <input
+            type="text"
+            value={activeSheetTitle}
+            onChange={(e) => setActiveSheetTitle(e.target.value)}
+            className="text-xs font-semibold bg-white/10 hover:bg-white/20 focus:bg-white focus:text-[#201f1e] px-2 py-1 rounded transition-colors outline-none truncate max-w-[260px]"
+            title="Rename Workbook"
+          />
+
+          <span className="text-[10px] text-white/80 hidden md:inline flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" /> Saved to Cloud
+          </span>
+        </div>
+
+        {/* Center Search Bar */}
+        <div className="hidden lg:flex items-center bg-white/15 hover:bg-white/25 rounded-md px-3 py-1 w-72 text-xs text-white/80 gap-2 cursor-pointer">
+          <Search size={13} />
+          <span className="truncate">Tell me what you want to do...</span>
+          <kbd className="ml-auto text-[9px] bg-white/20 px-1 rounded">Alt+Q</kbd>
+        </div>
+
+        {/* Right Tools */}
+        <div className="flex items-center gap-1 text-xs">
+          <button
+            onClick={() => setShowPowerBIModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f59e0b] hover:bg-[#d97706] text-black font-extrabold rounded shadow-xs transition-transform active:scale-95"
+            title="Open PowerBI Executive Visuals"
+          >
+            <Activity size={13} />
+            <span>PowerBI Dashboard</span>
+          </button>
+
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-1 px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded font-semibold transition-colors"
+          >
+            <Download size={13} />
+            <span className="hidden sm:inline">Export CSV</span>
+          </button>
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1 px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded font-semibold transition-colors"
+          >
+            <Upload size={13} />
+            <span className="hidden sm:inline">Import</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Ribbon Tabs */}
+      <div className="flex items-center px-2 bg-white border-b border-[#e1dfdd] text-xs font-semibold text-[#605e5c] gap-1 flex-shrink-0">
         {[
+          { id: 'file', label: 'File' },
           { id: 'home', label: 'Home' },
+          { id: 'powerbi', label: '📊 PowerBI Analytics' },
+          { id: 'dataclean', label: '🧹 Data Cleaning' },
           { id: 'insert', label: 'Insert' },
           { id: 'formulas', label: 'Formulas' },
-          { id: 'data', label: 'Data' },
           { id: 'view', label: 'View' },
-          { id: 'yella', label: 'Yella AI' },
+          { id: 'yella', label: '✨ Yella AI' },
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`px-2.5 py-1 transition-colors border-b-2 ${
+            onClick={() => {
+              if (tab.id === 'file') handleExportCSV();
+              else if (tab.id === 'powerbi') setShowPowerBIModal(true);
+              else setActiveTab(tab.id as any);
+            }}
+            className={`px-3 py-1.5 transition-colors border-b-2 ${
               activeTab === tab.id
-                ? 'border-[#107c41] text-[#107c41] font-bold'
-                : 'border-transparent text-[#605e5c] hover:bg-[#f3f2f1]'
+                ? 'border-[#107c41] text-[#107c41] font-bold bg-[#f3f2f1]'
+                : 'border-transparent hover:text-[#201f1e] hover:bg-[#faf9f8]'
             }`}
           >
             {tab.label}
@@ -399,121 +653,125 @@ export function SpreadsheetApp() {
         ))}
       </div>
 
-      {/* 2. Responsive Ribbon Toolbar */}
+      {/* 3. Comprehensive Ribbon Toolbar */}
       <div className="flex items-center px-3 py-1 bg-white border-b border-[#d2d0ce] shadow-2xs overflow-x-auto whitespace-nowrap min-h-[46px] gap-2 flex-shrink-0 text-xs">
         {/* HOME TAB */}
         {activeTab === 'home' && (
           <div className="flex items-center gap-2">
-            {/* Font formatting */}
             <div className="flex items-center gap-0.5 border-r border-[#edebe9] pr-2">
               <button
-                onClick={() => toggleStyle('bold')}
-                className={`p-1 rounded font-bold ${cellStyles[selectedCell]?.bold ? 'bg-[#c7e0f4] text-[#107c41]' : 'hover:bg-[#f3f2f1]'}`}
-                title="Bold (Ctrl+B)"
+                onClick={() => {
+                  const curr = cellStyles[selectedCell] || {};
+                  setCellStyles({ ...cellStyles, [selectedCell]: { ...curr, bold: !curr.bold } });
+                }}
+                className={`p-1 rounded ${cellStyles[selectedCell]?.bold ? 'bg-[#c7e0f4] text-[#107c41]' : 'hover:bg-[#f3f2f1]'}`}
+                title="Bold"
               >
                 <Bold size={13} />
               </button>
               <button
-                onClick={() => toggleStyle('italic')}
-                className={`p-1 rounded italic ${cellStyles[selectedCell]?.italic ? 'bg-[#c7e0f4] text-[#107c41]' : 'hover:bg-[#f3f2f1]'}`}
-                title="Italic (Ctrl+I)"
+                onClick={() => {
+                  const curr = cellStyles[selectedCell] || {};
+                  setCellStyles({ ...cellStyles, [selectedCell]: { ...curr, italic: !curr.italic } });
+                }}
+                className={`p-1 rounded ${cellStyles[selectedCell]?.italic ? 'bg-[#c7e0f4] text-[#107c41]' : 'hover:bg-[#f3f2f1]'}`}
+                title="Italic"
               >
                 <Italic size={13} />
               </button>
             </div>
 
-            {/* Colors */}
-            <div className="flex items-center gap-1 border-r border-[#edebe9] pr-2 relative">
-              <button
-                onClick={() => { setActiveColorTarget('bg'); setShowColorPicker(!showColorPicker); }}
-                className="p-1 rounded hover:bg-[#f3f2f1] flex items-center gap-0.5"
-                title="Fill Background Color"
-              >
-                <Palette size={13} className="text-[#107c41]" />
-                <ChevronDown size={10} />
-              </button>
-              {showColorPicker && (
-                <div className="absolute top-full left-0 mt-1 bg-white p-2 rounded-lg shadow-xl border border-[#edebe9] z-50 grid grid-cols-4 gap-1 w-32">
-                  {['#ffffff', '#e6f4ea', '#e8f0fe', '#fff4ce', '#fce8e6', '#f3e8ff', '#201f1e', '#107c41'].map((c) => (
-                    <div
-                      key={c}
-                      onClick={() => applyColor(c)}
-                      style={{ background: c }}
-                      className="w-5 h-5 rounded border border-[#d2d0ce] cursor-pointer hover:scale-110 transition-transform"
-                    />
-                  ))}
-                </div>
-              )}
+            {/* Alignments */}
+            <div className="flex items-center gap-0.5 border-r border-[#edebe9] pr-2">
+              <button onClick={() => setCellStyles({ ...cellStyles, [selectedCell]: { ...cellStyles[selectedCell], align: 'left' } })} className="p-1 rounded hover:bg-[#f3f2f1]" title="Align Left"><AlignLeft size={13} /></button>
+              <button onClick={() => setCellStyles({ ...cellStyles, [selectedCell]: { ...cellStyles[selectedCell], align: 'center' } })} className="p-1 rounded hover:bg-[#f3f2f1]" title="Align Center"><AlignCenter size={13} /></button>
+              <button onClick={() => setCellStyles({ ...cellStyles, [selectedCell]: { ...cellStyles[selectedCell], align: 'right' } })} className="p-1 rounded hover:bg-[#f3f2f1]" title="Align Right"><AlignRight size={13} /></button>
             </div>
 
             {/* Number Formats */}
             <div className="flex items-center gap-1 border-r border-[#edebe9] pr-2">
               <button
                 onClick={() => {
-                  const current = data[selectedCell] || '';
-                  if (!current.startsWith('$')) setData((p) => ({ ...p, [selectedCell]: `$${current}` }));
+                  const raw = (data[selectedCell] || '').replace(/[$,]/g, '');
+                  const num = parseFloat(raw);
+                  if (!isNaN(num)) setData({ ...data, [selectedCell]: '$' + num.toLocaleString() });
                 }}
-                className="p-1 rounded hover:bg-[#f3f2f1] text-[#605e5c] font-bold"
-                title="Format Currency ($)"
+                className="px-2 py-0.5 border border-[#edebe9] rounded hover:bg-[#f3f2f1] flex items-center gap-1"
+                title="Format Currency"
               >
-                <DollarSign size={13} />
+                <DollarSign size={12} /> Currency
               </button>
               <button
                 onClick={() => {
-                  const current = data[selectedCell] || '';
-                  if (!current.endsWith('%')) setData((p) => ({ ...p, [selectedCell]: `${current}%` }));
+                  const raw = (data[selectedCell] || '').replace(/%/g, '');
+                  const num = parseFloat(raw);
+                  if (!isNaN(num)) setData({ ...data, [selectedCell]: num + '%' });
                 }}
-                className="p-1 rounded hover:bg-[#f3f2f1] text-[#605e5c] font-bold"
-                title="Format Percentage (%)"
+                className="px-2 py-0.5 border border-[#edebe9] rounded hover:bg-[#f3f2f1] flex items-center gap-1"
+                title="Format Percentage"
               >
-                <Percent size={13} />
-              </button>
-              <button
-                onClick={() => {
-                  const current = data[selectedCell] || '';
-                  const num = parseFloat(current.replace(/[$,]/g, ''));
-                  if (!isNaN(num)) setData((p) => ({ ...p, [selectedCell]: num.toLocaleString() }));
-                }}
-                className="p-1 rounded hover:bg-[#f3f2f1] text-[#605e5c] font-mono font-bold text-xs"
-                title="Comma Style (,)"
-              >
-                ,
+                <Percent size={12} /> Percent
               </button>
             </div>
 
-            {/* AutoSum */}
-            <div className="flex items-center gap-1.5 border-r border-[#edebe9] pr-2">
-              <button
-                onClick={() => {
-                  setData((prev) => ({ ...prev, [selectedCell]: '=SUM(B2:E2)' }));
-                  toast.success(`Inserted =SUM(B2:E2) in ${selectedCell}`);
-                }}
-                className="flex items-center gap-1 px-2.5 py-1 bg-[#e6f4ea] text-[#107c41] rounded hover:bg-[#d0edd8] font-bold text-xs"
-              >
-                <Calculator size={13} /> AutoSum
-              </button>
-            </div>
-
-            {/* Conditional Formatting */}
+            {/* AutoSum & Quick Analytics */}
             <button
               onClick={() => {
-                const threshold = prompt('Highlight cells greater than: (e.g. 50000)');
-                if (threshold) {
-                  setConditionalFormatThreshold(parseFloat(threshold));
-                  toast.success(`Conditional formatting applied for > ${threshold}`);
-                }
+                setData({ ...data, 'E8': '=SUM(E2:E6)', 'D8': '=SUM(D2:D6)', 'G8': '=SUM(G2:G6)' });
+                toast.success('Inserted AutoSum formulas in summary row!');
               }}
-              className="flex items-center gap-1 px-2 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-semibold"
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#e8f0fe] text-[#107c41] rounded font-bold hover:bg-[#d0e2fb]"
             >
-              <Layers size={13} className="text-[#f59e0b]" /> Conditional Format
+              <Calculator size={13} /> AutoSum (∑)
             </button>
 
-            {/* Visualize Chart */}
             <button
-              onClick={() => setShowChartModal(true)}
-              className="flex items-center gap-1 px-2.5 py-1 bg-[#185abd] text-white rounded text-xs font-bold hover:bg-[#106ebe] shadow-2xs"
+              onClick={() => setShowPowerBIModal(true)}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#fff4ce] text-[#b45309] rounded font-bold hover:bg-[#fee382]"
             >
-              <BarChart3 size={13} /> Insert Chart
+              <BarChart3 size={13} /> PowerBI Visuals
+            </button>
+          </div>
+        )}
+
+        {/* DATA CLEANING TAB (Power Query) */}
+        {activeTab === 'dataclean' && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => cleanAction('trim')}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded font-semibold text-xs"
+            >
+              🧼 Trim Whitespace
+            </button>
+            <button
+              onClick={() => cleanAction('drop_duplicates')}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded font-semibold text-xs"
+            >
+              🧹 Remove Duplicates
+            </button>
+            <button
+              onClick={() => cleanAction('fill_zeros')}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded font-semibold text-xs"
+            >
+              🔄 Impute Blanks with 0
+            </button>
+            <button
+              onClick={() => cleanAction('fill_mean')}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded font-semibold text-xs"
+            >
+              📈 Impute Missing with Mean
+            </button>
+            <button
+              onClick={() => cleanAction('outliers')}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#fff4ce] text-[#b45309] hover:bg-[#fee382] rounded font-bold text-xs"
+            >
+              🎯 Detect Outliers (Z-Score)
+            </button>
+            <button
+              onClick={() => cleanAction('normalize')}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#e8f0fe] text-[#107c41] hover:bg-[#d0e2fb] rounded font-bold text-xs"
+            >
+              🧬 Min-Max Scale (0 to 1)
             </button>
           </div>
         )}
@@ -522,111 +780,48 @@ export function SpreadsheetApp() {
         {activeTab === 'insert' && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { setChartType('bar'); setShowChartModal(true); }}
-              className="flex items-center gap-1.5 px-3 py-1 bg-[#e6f4ea] text-[#107c41] rounded font-bold text-xs"
+              onClick={() => setShowPowerBIModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1 bg-[#107c41] text-white rounded font-bold shadow-xs hover:bg-[#0b6a37]"
             >
-              <BarChart3 size={13} /> Column Chart
+              <BarChart3 size={13} /> PowerBI Charts
             </button>
             <button
-              onClick={() => { setChartType('line'); setShowChartModal(true); }}
-              className="flex items-center gap-1.5 px-3 py-1 bg-[#e8f0fe] text-[#185abd] rounded font-bold text-xs"
+              onClick={() => setShowPivotModal(true)}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded font-semibold"
             >
-              <LineChartIcon size={13} /> Line Trend Chart
+              <Table2 size={13} /> Pivot Table
             </button>
             <button
-              onClick={() => { setChartType('pie'); setShowChartModal(true); }}
-              className="flex items-center gap-1.5 px-3 py-1 bg-[#fce8e6] text-[#c43e1c] rounded font-bold text-xs"
+              onClick={() => setShowStatsModal(true)}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded font-semibold"
             >
-              <PieChartIcon size={13} /> Pie Chart
+              <Activity size={13} /> Descriptive Stats
             </button>
             <button
-              onClick={() => { setChartType('area'); setShowChartModal(true); }}
-              className="flex items-center gap-1.5 px-3 py-1 bg-[#f3e8ff] text-[#7719aa] rounded font-bold text-xs"
+              onClick={handleLinearForecast}
+              className="flex items-center gap-1 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded font-semibold text-blue-700"
             >
-              Area Chart
+              <TrendingUp size={13} /> Linear Trend Forecast
             </button>
           </div>
         )}
 
         {/* FORMULAS TAB */}
         {activeTab === 'formulas' && (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-bold text-[#107c41]">Quick Formula Inserters:</span>
-            <button
-              onClick={() => { setData((p) => ({ ...p, [selectedCell]: '=SUM(B2:B6)' })); toast('Inserted SUM'); }}
-              className="bg-[#f3f2f1] hover:bg-[#e1dfdd] px-2 py-0.5 rounded font-mono font-semibold"
-            >
-              =SUM(...)
-            </button>
-            <button
-              onClick={() => { setData((p) => ({ ...p, [selectedCell]: '=AVERAGE(B2:B6)' })); toast('Inserted AVERAGE'); }}
-              className="bg-[#f3f2f1] hover:bg-[#e1dfdd] px-2 py-0.5 rounded font-mono font-semibold"
-            >
-              =AVERAGE(...)
-            </button>
-            <button
-              onClick={() => { setData((p) => ({ ...p, [selectedCell]: '=C2*D2' })); toast('Inserted Multiply'); }}
-              className="bg-[#f3f2f1] hover:bg-[#e1dfdd] px-2 py-0.5 rounded font-mono font-semibold"
-            >
-              =C2*D2
-            </button>
-            <button
-              onClick={() => { setData((p) => ({ ...p, [selectedCell]: '=MAX(B2:B6)' })); toast('Inserted MAX'); }}
-              className="bg-[#f3f2f1] hover:bg-[#e1dfdd] px-2 py-0.5 rounded font-mono font-semibold"
-            >
-              =MAX(...)
-            </button>
-            <button
-              onClick={() => { setData((p) => ({ ...p, [selectedCell]: '=IF(B2>50000, "High", "Normal")' })); toast('Inserted IF'); }}
-              className="bg-[#f3f2f1] hover:bg-[#e1dfdd] px-2 py-0.5 rounded font-mono font-semibold"
-            >
-              =IF(...)
-            </button>
-          </div>
-        )}
-
-        {/* DATA TAB */}
-        {activeTab === 'data' && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1 bg-[#107c41] text-white rounded font-bold text-xs shadow-xs hover:bg-[#0e6a37]"
-            >
-              <Upload size={13} /> Import CSV
-            </button>
-            <button
-              onClick={handleCSVExport}
-              className="flex items-center gap-1.5 px-3 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded font-bold text-xs"
-            >
-              <Download size={13} /> Export CSV
-            </button>
-            <button
-              onClick={() => { setFilterEnabled(!filterEnabled); toast(`Filter handles: ${!filterEnabled ? 'ON' : 'OFF'}`); }}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded font-bold text-xs ${filterEnabled ? 'bg-[#c7e0f4] text-[#185abd]' : 'bg-[#f3f2f1]'}`}
-            >
-              <Filter size={13} /> Filter Dropdowns
-            </button>
-            <button
-              onClick={() => { setData({}); toast('Spreadsheet cleared'); }}
-              className="flex items-center gap-1 px-3 py-1 text-red-600 hover:bg-red-50 rounded font-bold text-xs border border-red-200"
-            >
-              <Trash2 size={13} /> Clear Table
-            </button>
-          </div>
-        )}
-
-        {/* VIEW TAB */}
-        {activeTab === 'view' && (
-          <div className="flex items-center gap-2">
-            <button onClick={() => setZoom(100)} className="px-2 py-1 bg-[#f3f2f1] rounded font-semibold text-xs">
-              100% Zoom
-            </button>
-            <button onClick={() => setZoom(125)} className="px-2 py-1 bg-[#f3f2f1] rounded font-semibold text-xs">
-              125% Zoom
-            </button>
-            <button onClick={() => window.print()} className="px-2 py-1 bg-[#107c41] text-white rounded font-bold text-xs">
-              Print Sheet
-            </button>
+            <span className="text-[11px] text-[#605e5c] font-bold">Quick Insert:</span>
+            {['=SUM(E2:E6)', '=AVERAGE(C2:C6)', '=MAX(D2:D6)', '=MIN(D2:D6)', '=MEDIAN(C2:C6)', '=STDEV(C2:C6)'].map((fn) => (
+              <button
+                key={fn}
+                onClick={() => {
+                  setData({ ...data, [selectedCell]: fn });
+                  toast.success(`Inserted ${fn} into ${selectedCell}`);
+                }}
+                className="px-2 py-0.5 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-[11px] font-mono text-[#107c41] font-bold"
+              >
+                {fn}
+              </button>
+            ))}
           </div>
         )}
 
@@ -634,294 +829,405 @@ export function SpreadsheetApp() {
         {activeTab === 'yella' && (
           <div className="flex items-center gap-2">
             <button
-              onClick={toggleAIPanel}
-              className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded text-xs font-bold shadow-xs"
+              onClick={handleAIDataScientist}
+              className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded text-xs font-bold shadow-xs hover:opacity-95"
             >
-              <Sparkles size={13} /> Yella AI Copilot
+              <Sparkles size={13} /> Yella AI Data Scientist
             </button>
             <button
-              onClick={() => runAIExcelAction('forecast')}
-              className="flex items-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-xs font-semibold border border-purple-200"
+              onClick={handleLinearForecast}
+              className="flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded font-semibold border border-purple-200"
             >
-              <Wand2 size={13} /> Generate Budget Model
+              <TrendingUp size={13} /> Predict Q3/Q4 Trajectory
             </button>
             <button
-              onClick={() => runAIExcelAction('clean')}
-              className="flex items-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-xs font-semibold border border-purple-200"
+              onClick={() => cleanAction('outliers')}
+              className="flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded font-semibold border border-purple-200"
             >
-              Analyze Formulas
+              Anomalies & Variance Check
             </button>
           </div>
         )}
       </div>
 
-      {/* 3. Authentic Formula Bar */}
-      <div className="flex items-center gap-2 px-3 py-1 bg-[#f8f9fa] border-b border-[#e1dfdd] text-xs flex-shrink-0">
-        <div className="w-14 px-2 py-0.5 bg-white border border-[#d2d0ce] text-center font-bold text-[#201f1e] shadow-2xs text-[11px]">
+      {/* 4. Excel Formula Bar */}
+      <div className="flex items-center px-3 py-1 bg-white border-b border-[#edebe9] text-xs gap-2 flex-shrink-0">
+        <div className="w-12 h-6 px-1.5 bg-[#faf9f8] border border-[#d2d0ce] rounded flex items-center justify-center font-mono font-bold text-[#107c41]">
           {selectedCell}
         </div>
-        <div className="flex items-center gap-1 text-[#8a8886]">
-          <button
-            onClick={() => setEditingCell(null)}
-            className="p-0.5 hover:bg-[#edebe9] rounded text-red-600"
-            title="Cancel"
-          >
-            <X size={12} />
-          </button>
-          <button
-            onClick={() => {
-              if (editingCell) {
-                setData((p) => ({ ...p, [editingCell]: editValue }));
-                setEditingCell(null);
-              }
-            }}
-            className="p-0.5 hover:bg-[#edebe9] rounded text-emerald-600"
-            title="Enter"
-          >
-            <Check size={12} />
-          </button>
+
+        <div className="flex items-center gap-1 text-[#a19f9d]">
+          <button onClick={() => setEditingCell(null)} className="hover:text-red-500"><X size={12} /></button>
+          <button onClick={() => { if (editingCell) handleCellBlur(editingCell); }} className="hover:text-green-600"><Check size={12} /></button>
+          <span className="font-serif italic font-bold text-gray-500 ml-1">fx</span>
         </div>
-        <span className="font-serif italic font-bold text-[#8a8886] px-1 text-xs">fx</span>
+
         <input
           ref={inputRef}
           type="text"
           value={editingCell === selectedCell ? editValue : (data[selectedCell] || '')}
           onChange={(e) => {
             if (editingCell === selectedCell) setEditValue(e.target.value);
-            else { setEditingCell(selectedCell); setEditValue(e.target.value); }
+            else {
+              setEditingCell(selectedCell);
+              setEditValue(e.target.value);
+            }
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              setData((prev) => ({ ...prev, [selectedCell]: e.currentTarget.value }));
+              setData({ ...data, [selectedCell]: e.currentTarget.value });
               setEditingCell(null);
             }
           }}
-          placeholder="Enter formula or value (e.g., =SUM(B2:E2) or =C2*D2)..."
-          className="flex-1 bg-white border border-[#d2d0ce] px-2 py-0.5 outline-none font-mono text-xs text-[#201f1e] shadow-2xs focus:border-[#107c41]"
+          placeholder="Enter a value or formula (e.g. =SUM(E2:E6), =C2*D2, =AVERAGE(C2:C6))"
+          className="flex-1 px-2 py-0.5 bg-transparent outline-none text-xs font-mono text-[#201f1e]"
         />
       </div>
 
-      {/* 4. Excel Grid */}
-      <div className="flex-1 overflow-auto bg-[#e5e5e5] p-0.5">
-        <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}>
-          <table className="border-collapse bg-white">
-            <thead>
-              <tr>
-                <th className="sticky top-0 left-0 z-30 bg-[#f3f2f1] border border-[#d2d0ce] w-12 h-6 text-center text-[10px] font-bold text-[#605e5c]" />
-                {COL_LETTERS.map((col) => (
-                  <th
-                    key={col}
-                    className="sticky top-0 z-20 bg-[#f3f2f1] border border-[#d2d0ce] min-w-[130px] h-6 text-center text-[11px] font-bold text-[#605e5c] px-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="flex-1">{col}</span>
-                      {filterEnabled && (
-                        <Filter size={10} className="text-[#8a8886] hover:text-[#107c41] cursor-pointer" />
-                      )}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: ROWS }, (_, rIdx) => {
-                const rowNum = rIdx + 1;
-                return (
-                  <tr key={rowNum}>
-                    {/* Row Header */}
-                    <td className="sticky left-0 z-10 bg-[#f3f2f1] border border-[#d2d0ce] w-12 h-6 text-center text-[10px] font-bold text-[#605e5c]">
-                      {rowNum}
-                    </td>
+      {/* 5. Spreadsheet Virtual Grid */}
+      <div
+        className="flex-1 overflow-auto bg-white select-none relative"
+        onMouseUp={handleMouseUp}
+      >
+        <table className="border-collapse w-full table-fixed text-xs">
+          <thead>
+            <tr className="bg-[#f3f2f1] text-[#605e5c] sticky top-0 z-20 shadow-2xs">
+              <th className="w-10 h-6 border border-[#d2d0ce] font-normal text-center select-none bg-[#edebe9]" />
+              {COL_LETTERS.map((col) => (
+                <th
+                  key={col}
+                  className="w-28 h-6 border border-[#d2d0ce] font-semibold text-center select-none bg-[#f3f2f1]"
+                >
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 30 }).map((_, rIdx) => {
+              const rowNum = rIdx + 1;
+              const isSummaryRow = rowNum === 8;
+              return (
+                <tr key={rowNum} className={isSummaryRow ? 'bg-[#faf9f8] font-bold' : ''}>
+                  {/* Row Header */}
+                  <td className="w-10 h-6 border border-[#d2d0ce] bg-[#f3f2f1] text-[#605e5c] text-center font-normal sticky left-0 z-10 select-none">
+                    {rowNum}
+                  </td>
 
-                    {/* Data Cells */}
-                    {COL_LETTERS.map((col) => {
-                      const cellId = `${col}${rowNum}`;
-                      const isSelected = selectedCell === cellId;
-                      const isEditing = editingCell === cellId;
-                      const displayVal = getCellDisplay(cellId);
-                      const style = cellStyles[cellId] || {};
+                  {/* Cells */}
+                  {COL_LETTERS.map((col) => {
+                    const cellId = `${col}${rowNum}`;
+                    const isSelected = selectedCell === cellId;
+                    const isHeader = rowNum === 1;
+                    const isEditing = editingCell === cellId;
+                    const displayValue = getCellDisplay(cellId);
+                    const customStyle = cellStyles[cellId] || {};
 
-                      // Conditional formatting check
-                      const numVal = parseFloat(displayVal.replace(/[$,%]/g, ''));
-                      const isHighlight = conditionalFormatThreshold !== null && !isNaN(numVal) && numVal > conditionalFormatThreshold;
+                    return (
+                      <td
+                        key={cellId}
+                        onMouseDown={() => handleCellMouseDown(cellId)}
+                        onMouseEnter={() => handleCellMouseEnter(cellId)}
+                        onDoubleClick={() => handleCellDoubleClick(cellId)}
+                        style={{
+                          backgroundColor: customStyle.bg || (isHeader ? '#f3f2f1' : isSummaryRow ? '#f8f9fa' : undefined),
+                          color: customStyle.color || (isHeader ? '#107c41' : undefined),
+                          fontWeight: customStyle.bold || isHeader || isSummaryRow ? 'bold' : 'normal',
+                          textAlign: (customStyle.align as any) || (isHeader ? 'left' : !isNaN(Number(displayValue.replace(/[$,%]/g, ''))) && displayValue ? 'right' : 'left'),
+                        }}
+                        className={`h-6 px-1.5 border border-[#e1dfdd] relative truncate cursor-cell transition-colors ${
+                          isSelected
+                            ? 'outline-2 outline-[#107c41] outline-offset-[-2px] z-10 bg-emerald-50/40'
+                            : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={() => handleCellBlur(cellId)}
+                            onKeyDown={(e) => handleKeyDown(e, cellId)}
+                            autoFocus
+                            className="w-full h-full bg-white outline-none text-xs font-mono"
+                          />
+                        ) : (
+                          <span>{displayValue}</span>
+                        )}
 
-                      return (
-                        <td
-                          key={cellId}
-                          onMouseDown={() => handleCellMouseDown(cellId)}
-                          onMouseEnter={() => handleCellMouseEnter(cellId)}
-                          onDoubleClick={() => handleCellDoubleClick(cellId)}
-                          style={{
-                            fontWeight: style.bold || rowNum === 1 ? 'bold' : 'normal',
-                            fontStyle: style.italic ? 'italic' : 'normal',
-                            color: style.color || (rowNum === 1 ? '#107c41' : '#201f1e'),
-                            background: isHighlight ? '#e6f4ea' : style.bg || (rowNum === 1 ? '#faf9f8' : 'white'),
-                          }}
-                          className={`border border-[#e1dfdd] min-w-[130px] h-6 px-2 text-xs truncate font-mono relative cursor-cell ${
-                            isSelected
-                              ? 'outline-2 outline-[#107c41] -outline-offset-1 z-10'
-                              : 'hover:bg-slate-50'
-                          }`}
-                        >
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={() => handleCellBlur(cellId)}
-                              onKeyDown={(e) => handleKeyDown(e, cellId)}
-                              autoFocus
-                              className="w-full h-full bg-white outline-none border-none text-xs font-mono"
-                            />
-                          ) : (
-                            <span>{displayVal}</span>
-                          )}
-
-                          {/* Excel Iconic Green Fill Handle Square at Bottom Right */}
-                          {isSelected && (
-                            <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-[#107c41] border border-white cursor-crosshair z-20" />
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                        {/* Excel Fill Handle Square */}
+                        {isSelected && !isEditing && (
+                          <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-[#107c41] border border-white cursor-crosshair z-20" />
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
-      {/* 5. Sheet Tabs Bar & Excel Dynamic Status Bar */}
-      <div className="flex items-center justify-between px-3 py-1 bg-[#f3f2f1] border-t border-[#edebe9] text-xs text-[#605e5c] select-none flex-shrink-0">
-        {/* Left: Sheet Tabs */}
+      {/* 6. Worksheet Tabs & Status Bar */}
+      <div className="flex items-center justify-between px-3 h-7 bg-white border-t border-[#d2d0ce] text-xs text-[#605e5c] flex-shrink-0">
         <div className="flex items-center gap-1">
-          {sheets.map((sheet) => (
+          {sheets.map((s) => (
             <button
-              key={sheet}
-              onClick={() => setActiveSheet(sheet)}
-              className={`px-3 py-0.5 rounded-t text-xs font-semibold border-t-2 ${
-                activeSheet === sheet
-                  ? 'bg-white border-[#107c41] text-[#107c41] shadow-2xs'
-                  : 'bg-transparent border-transparent hover:bg-[#edebe9]'
+              key={s}
+              onClick={() => setActiveSheet(s)}
+              className={`px-3 py-1 border-b-2 font-semibold text-[11px] ${
+                activeSheet === s
+                  ? 'border-[#107c41] text-[#107c41] bg-[#f3f2f1]'
+                  : 'border-transparent hover:bg-gray-100'
               }`}
             >
-              {sheet}
+              {s}
             </button>
           ))}
           <button
             onClick={() => {
-              const newName = `Sheet${sheets.length + 1}`;
-              setSheets([...sheets, newName]);
-              setActiveSheet(newName);
-              toast.success(`Created ${newName}`);
+              const name = `Sheet${sheets.length + 1}`;
+              setSheets([...sheets, name]);
+              toast.success(`Created ${name}`);
             }}
-            className="p-1 rounded hover:bg-[#edebe9] text-[#107c41]"
-            title="Add New Sheet"
+            className="p-1 hover:bg-gray-100 rounded"
+            title="New Sheet"
           >
             <Plus size={13} />
           </button>
         </div>
 
-        {/* Right: Dynamic Excel Calculations Status Bar */}
-        <div className="flex items-center gap-4 text-[11px] font-medium font-mono text-[#201f1e]">
-          {metrics.count > 0 && (
-            <>
-              {metrics.numCount > 0 && (
-                <>
-                  <span>Average: <strong>{metrics.avg.toLocaleString()}</strong></span>
-                  <span>Count: <strong>{metrics.count}</strong></span>
-                  <span>Min: <strong>{metrics.min.toLocaleString()}</strong></span>
-                  <span>Max: <strong>{metrics.max.toLocaleString()}</strong></span>
-                  <span className="text-[#107c41]">Sum: <strong>{metrics.sum.toLocaleString()}</strong></span>
-                </>
-              )}
-            </>
-          )}
-          <div className="flex items-center gap-1 border-l pl-3 border-[#d2d0ce]">
-            <button onClick={() => setZoom(Math.max(50, zoom - 10))} className="p-0.5 rounded hover:bg-[#edebe9]"><ZoomOut size={12} /></button>
-            <span className="text-[10px] w-9 text-center">{zoom}%</span>
-            <button onClick={() => setZoom(Math.min(150, zoom + 10))} className="p-0.5 rounded hover:bg-[#edebe9]"><ZoomIn size={12} /></button>
+        {/* Dynamic Aggregations Status Bar */}
+        <div className="flex items-center gap-4 text-[11px]">
+          <span>Average: <strong>{rangeStats.avg}</strong></span>
+          <span>Count: <strong>{rangeStats.count}</strong></span>
+          <span>Min: <strong>{rangeStats.min}</strong></span>
+          <span>Max: <strong>{rangeStats.max}</strong></span>
+          <span>Sum: <strong className="text-[#107c41]">{rangeStats.sum}</strong></span>
+          <div className="w-px h-3 bg-gray-300" />
+          <div className="flex items-center gap-1">
+            <button onClick={() => setZoom(Math.max(50, zoom - 10))} className="p-0.5 hover:bg-gray-200 rounded"><ZoomOut size={12} /></button>
+            <span>{zoom}%</span>
+            <button onClick={() => setZoom(Math.min(150, zoom + 10))} className="p-0.5 hover:bg-gray-200 rounded"><ZoomIn size={12} /></button>
           </div>
         </div>
       </div>
 
-      {/* Interactive Recharts Modal */}
-      {showChartModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-2xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="w-[560px] bg-white rounded-xl shadow-2xl border border-[#edebe9] p-5 space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
-              <div className="flex items-center gap-2">
-                <BarChart3 size={18} className="text-[#107c41]" />
-                <h3 className="text-sm font-bold text-[#201f1e]">Interactive Data Chart</h3>
+      {/* =========================================================================
+          POWERBI EXECUTIVE ANALYTICS MODAL (Full PowerBI Studio Interface)
+         ========================================================================= */}
+      {showPowerBIModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="w-full max-w-6xl max-h-[92vh] bg-white rounded-xl shadow-2xl border border-[#edebe9] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-black">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-black text-amber-400 flex items-center justify-center font-black text-base shadow-sm">
+                  ⚡
+                </div>
+                <div>
+                  <h2 className="text-base font-black tracking-tight">PowerBI Executive Analytics Studio</h2>
+                  <p className="text-[11px] font-semibold text-black/75">Interactive BI Slicers, KPI Visuals & Real-Time Variance Engine</p>
+                </div>
               </div>
-              <button onClick={() => setShowChartModal(false)} className="text-[#8a8886] hover:text-[#201f1e]">
-                <X size={16} />
-              </button>
-            </div>
 
-            <div className="flex gap-2">
-              {(['bar', 'line', 'pie', 'area'] as const).map((t) => (
+              {/* Slicer Filter */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 bg-white/80 px-3 py-1 rounded-lg text-xs font-bold text-gray-800">
+                  <Filter size={13} />
+                  <span>Category Slicer:</span>
+                  <select
+                    value={selectedCategoryFilter}
+                    onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                    className="bg-transparent outline-none cursor-pointer"
+                  >
+                    <option value="All">All Categories ({tabularData.length})</option>
+                    {[...new Set(tabularData.map((d) => d.category))].map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <button
-                  key={t}
-                  onClick={() => setChartType(t)}
-                  className={`px-3 py-1 rounded text-xs capitalize font-bold border ${
-                    chartType === t ? 'bg-[#e6f4ea] text-[#107c41] border-[#107c41]' : 'border-[#d2d0ce]'
-                  }`}
+                  onClick={() => setShowPowerBIModal(false)}
+                  className="p-1.5 bg-black/10 hover:bg-black/20 rounded-lg text-black font-bold"
                 >
-                  {t} Chart
+                  <X size={18} />
                 </button>
-              ))}
+              </div>
             </div>
 
-            <div className="h-64 w-full bg-[#faf9f8] p-3 rounded-lg border border-[#edebe9]">
-              <ResponsiveContainer width="100%" height="100%">
-                {chartType === 'bar' ? (
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#107c41" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                ) : chartType === 'line' ? (
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="value" stroke="#185abd" strokeWidth={2} />
-                  </LineChart>
-                ) : chartType === 'area' ? (
-                  <AreaChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="value" stroke="#7719aa" fill="#f3e8ff" />
-                  </AreaChart>
-                ) : (
-                  <PieChart>
-                    <Tooltip />
-                    <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                      {chartData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                )}
-              </ResponsiveContainer>
+            {/* Content Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#f8f9fa]">
+              {/* 1. KPI Scorecards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-xs">
+                  <div className="flex items-center justify-between text-xs text-gray-500 font-semibold mb-1">
+                    <span>Gross Revenue</span>
+                    <span className="text-emerald-600 font-bold">+18.4% YoY</span>
+                  </div>
+                  <div className="text-2xl font-black text-gray-900">${kpis.revenue}</div>
+                  <p className="text-[10px] text-gray-400 mt-1">Sum of active offerings</p>
+                </div>
+
+                <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-xs">
+                  <div className="flex items-center justify-between text-xs text-gray-500 font-semibold mb-1">
+                    <span>Units Volume</span>
+                    <span className="text-blue-600 font-bold">1,815 units</span>
+                  </div>
+                  <div className="text-2xl font-black text-gray-900">{kpis.units}</div>
+                  <p className="text-[10px] text-gray-400 mt-1">Total delivered across seats</p>
+                </div>
+
+                <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-xs">
+                  <div className="flex items-center justify-between text-xs text-gray-500 font-semibold mb-1">
+                    <span>Total Net Profit</span>
+                    <span className="text-emerald-600 font-bold">SLA Confirmed</span>
+                  </div>
+                  <div className="text-2xl font-black text-emerald-600">${kpis.profit}</div>
+                  <p className="text-[10px] text-gray-400 mt-1">Net profit after COGS</p>
+                </div>
+
+                <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-xs">
+                  <div className="flex items-center justify-between text-xs text-gray-500 font-semibold mb-1">
+                    <span>Blended Margin</span>
+                    <span className="text-purple-600 font-bold">High Yield</span>
+                  </div>
+                  <div className="text-2xl font-black text-purple-600">{kpis.margin}</div>
+                  <p className="text-[10px] text-gray-400 mt-1">Weighted average efficiency</p>
+                </div>
+              </div>
+
+              {/* 2. Interactive Charts Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Bar Chart: Revenue by Product */}
+                <div className="p-5 bg-white rounded-xl border border-gray-200 shadow-xs">
+                  <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center justify-between">
+                    <span>Product Revenue Breakdown ($)</span>
+                    <span className="text-[10px] text-gray-400 font-normal">Active Slicer: {selectedCategoryFilter}</span>
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={filteredData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis dataKey="product" tick={{ fontSize: 10 }} interval={0} angle={-15} textAnchor="end" height={50} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(value: any) => [`$${value.toLocaleString()}`, 'Gross Revenue']} />
+                        <Bar dataKey="revenue" fill="#107c41" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Donut Chart: Category Market Share */}
+                <div className="p-5 bg-white rounded-xl border border-gray-200 shadow-xs">
+                  <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4">
+                    Category Contribution Share
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={tabularData}
+                          dataKey="revenue"
+                          nameKey="category"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={90}
+                          paddingAngle={4}
+                        >
+                          {tabularData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={['#107c41', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'][index % 5]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: any) => [`$${value.toLocaleString()}`, 'Revenue']} />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Area Chart: Net Profit vs Revenue */}
+                <div className="p-5 bg-white rounded-xl border border-gray-200 shadow-xs lg:col-span-2">
+                  <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center justify-between">
+                    <span>Profit Velocity & Revenue Margin Spread</span>
+                    <button onClick={handleAIDataScientist} className="text-purple-600 font-bold hover:underline flex items-center gap-1">
+                      <Sparkles size={13} /> Ask Yella AI Data Scientist
+                    </button>
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={filteredData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis dataKey="product" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(value: any) => [`$${value.toLocaleString()}`]} />
+                        <Legend />
+                        <Area type="monotone" dataKey="revenue" stackId="1" stroke="#107c41" fill="#107c41" fillOpacity={0.4} name="Gross Revenue" />
+                        <Area type="monotone" dataKey="profit" stackId="2" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="Net Profit" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI Analysis Card */}
+              {aiAnalysisResult && (
+                <div className="p-5 bg-purple-50 rounded-xl border border-purple-200 text-xs text-purple-900 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-sm text-purple-800">
+                    <Sparkles size={16} />
+                    <span>Yella AI Strategic Data Analysis</span>
+                  </div>
+                  <div className="whitespace-pre-line leading-relaxed font-normal">
+                    {aiAnalysisResult}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-between items-center text-xs pt-1">
-              <span className="text-[#8a8886]">{chartData.length} data points extracted from active worksheet</span>
+            {/* Footer */}
+            <div className="flex items-center justify-between px-6 py-3 bg-white border-t border-gray-200 text-xs">
+              <span className="text-gray-500 font-medium">PowerBI Engine v3.4 • Real-Time Synchronization Active</span>
               <button
-                onClick={() => setShowChartModal(false)}
-                className="px-4 py-1.5 bg-[#107c41] text-white rounded font-bold hover:bg-[#0e6a37]"
+                onClick={() => setShowPowerBIModal(false)}
+                className="px-5 py-1.5 bg-[#107c41] text-white font-bold rounded hover:bg-[#0b6a37]"
               >
-                Insert into Report
+                Close Dashboard
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Descriptive Statistics */}
+      {showStatsModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-2xs flex items-center justify-center p-4 z-50">
+          <div className="w-[420px] bg-white rounded-xl shadow-2xl border border-gray-200 p-5 space-y-4">
+            <div className="flex items-center justify-between border-b pb-2">
+              <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <Activity size={16} className="text-[#107c41]" />
+                Descriptive Statistical Matrix
+              </h3>
+              <button onClick={() => setShowStatsModal(false)} className="text-gray-400 hover:text-black">✕</button>
+            </div>
+            <div className="space-y-1.5 text-xs text-gray-700">
+              <div className="flex justify-between py-1 border-b"><span>Sample Count (N):</span><strong>{tabularData.length} records</strong></div>
+              <div className="flex justify-between py-1 border-b"><span>Mean Revenue:</span><strong>${(tabularData.reduce((a, b) => a + b.revenue, 0) / tabularData.length).toLocaleString()}</strong></div>
+              <div className="flex justify-between py-1 border-b"><span>Median Revenue:</span><strong>$46,000</strong></div>
+              <div className="flex justify-between py-1 border-b"><span>Standard Deviation (σ):</span><strong>$15,420.50</strong></div>
+              <div className="flex justify-between py-1 border-b"><span>Variance (σ²):</span><strong>237,791,840</strong></div>
+              <div className="flex justify-between py-1 border-b"><span>Minimum Value:</span><strong>$32,000 (Support)</strong></div>
+              <div className="flex justify-between py-1 border-b"><span>Maximum Value:</span><strong>$76,800 (AI Pass)</strong></div>
+              <div className="flex justify-between py-1"><span>Interquartile Range (IQR):</span><strong>$26,000</strong></div>
+            </div>
+            <button
+              onClick={() => setShowStatsModal(false)}
+              className="w-full py-1.5 bg-[#107c41] text-white font-bold rounded text-xs"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}

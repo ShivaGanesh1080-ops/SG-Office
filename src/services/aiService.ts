@@ -263,12 +263,14 @@ function generateAutonomousResponse(prompt: string, context: string): string {
     lower.includes('write a document') ||
     lower.includes('write an essay') ||
     lower.includes('draft a proposal') ||
-    lower.includes('create doc')
+    lower.includes('create doc') ||
+    lower.includes('write doc') ||
+    lower.includes('report')
   ) {
     const topic =
-      prompt.replace(/create a document about|create a document on|write a document on|write a document about|draft a document for/gi, '').trim() ||
+      prompt.replace(/create a document about|create a document on|write a document on|write a document about|draft a document for|write doc on/gi, '').trim() ||
       'Executive Strategic Blueprint';
-    return `### Generated Document: "${topic}"\n\nI have generated a structured multi-tier document with an executive summary, scope, deliverables, risk framework, and timeline. I have automatically applied this document directly into your active **Word** editor!\n\nOpen the **Word** app from the left menu to format, edit with headings, or export to .docx.`;
+    return `### Generated Document: "${topic}"\n\nI have generated a structured multi-tier document with an executive summary, scope, deliverables, risk framework, and timeline. I have automatically applied this document directly into your active **Word** editor!\n\n**Included Sections:**\n- 1. Executive Summary & Vision\n- 2. Workstream Matrix (with styled table)\n- 3. Governance & Risk Framework\n- 4. Implementation Milestones\n\nClick **Open in Word** below to review, format, or export to .docx.`;
   }
 
   // CSV / Excel data analysis
@@ -278,9 +280,11 @@ function generateAutonomousResponse(prompt: string, context: string): string {
     lower.includes('spreadsheet') ||
     lower.includes('calculate') ||
     lower.includes('budget') ||
-    lower.includes('expense')
+    lower.includes('expense') ||
+    lower.includes('powerbi') ||
+    lower.includes('clean')
   ) {
-    return `### Data Analysis & Financial Model\n\nI have structured an active financial model with dynamic formulas:\n- Range formulas applied: \`=SUM(...)\`, \`=AVERAGE(...)\`\n- Variance metrics calculated: \`=Actual - Budget\`\n- Generated numerical columns compatible with Bar & Pie charts\n\nYour **Excel** worksheet has been updated with these live calculations!`;
+    return `### Data Analysis & Financial Model\n\nI have structured an active financial model with dynamic formulas and verified arithmetic:\n- **Gross Revenue**: \`=C2*D2\` (Unit Price × Units Sold)\n- **COGS**: \`=E2*0.35\` (35% standard margin benchmark)\n- **Net Profit**: \`=E2-F2\` (Gross Revenue - COGS)\n- **Profit Margin**: \`=G2/E2\` (Targeting >65%)\n- **Summary Totals**: \`=SUM(E2:E6)\` & \`=AVERAGE(H2:H6)\`\n\nYour **Excel** worksheet has been updated! You can also click **PowerBI Visuals** in the top ribbon to view interactive KPI cards and charts.`;
   }
 
   // Presentation deck
@@ -293,9 +297,9 @@ function generateAutonomousResponse(prompt: string, context: string): string {
     const topic =
       prompt.replace(/create a presentation on|create slides about|generate pitch deck for/gi, '').trim() ||
       'Executive Strategy Overview';
-    return `### Presentation Deck Architecture: "${topic}"\n\nI have drafted a 4-part slide presentation:\n1. **Title Slide**: ${topic} Vision & Overview\n2. **Market & Problem Statement**: Current landscape & core challenges\n3. **Office 365 Solution & Metrics**: High velocity, 99.4% precision\n4. **Call to Action**: Execution roadmap & timeline\n\nOpen **PowerPoint** from the left rail to present full-screen!`;
+    return `### Presentation Deck Architecture: "${topic}"\n\nI have drafted a 5-part executive slide presentation:\n1. **Hero Title**: ${topic} Vision & Overview\n2. **KPI Metrics**: Operational velocity & 99.8% precision\n3. **Comparison**: Traditional constraints vs. Modern 365\n4. **Roadmap**: 4-phase deployment milestones\n5. **Executive Quote**: Strategic vision & next steps\n\nClick **Open in PowerPoint** below to present full-screen (F5)!`;
   }
 
   // General questions & reasoning
-  return `I have analyzed your request regarding: "${prompt}".\n\nAs your personalized assistant Yella inside SG-Office 365, I can directly execute actions on your behalf:\n- 📝 Write full documents, tables, and styles into **Word**\n- 📊 Parse CSV files and build formulas in **Excel**\n- 🎨 Construct slide decks in **PowerPoint**\n- 📬 Compose emails in **Gmail**\n\n💡 *Tip: Connect your free Google Gemini API key to activate live real-time web intelligence with automated model failover.*`;
+  return `I have analyzed your request regarding: "${prompt}".\n\nAs your personalized assistant Yella inside Microsoft 365 Enterprise, I can directly execute actions on your behalf:\n- 📝 Write full documents, tables, and styles into **Word**\n- 📊 Parse CSV files, clean data, and build formulas in **Excel**\n- 🎨 Construct slide decks and switch designer themes in **PowerPoint**\n- 📬 Compose emails in **Gmail**\n\n💡 *Tip: Connect your free Google Gemini API key to activate live real-time web intelligence with automated model failover.*`;
 }

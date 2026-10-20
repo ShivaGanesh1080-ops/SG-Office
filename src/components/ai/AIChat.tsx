@@ -122,37 +122,61 @@ export function AIChat() {
     const lower = userPrompt.toLowerCase();
 
     // Word Document generation
-    if (lower.includes('create a document') || lower.includes('write a doc') || lower.includes('draft doc') || lower.includes('write an essay')) {
-      const topic = userPrompt.replace(/create a document about|write a doc on|draft doc for/gi, '').trim() || 'Executive Project Plan';
+    if (
+      lower.includes('document') ||
+      lower.includes('write doc') ||
+      lower.includes('draft doc') ||
+      lower.includes('write an essay') ||
+      lower.includes('report') ||
+      lower.includes('proposal')
+    ) {
+      const topic = userPrompt.replace(/create a document about|create a document on|write a doc on|draft doc for/gi, '').trim() || 'Executive Project Plan';
       const docContent = `<h1>${topic.toUpperCase()}</h1>
-<p><em>Authored by Yella AI Assistant for SG-Office.</em></p>
+<p><em>Authored by Yella AI Assistant for Microsoft 365 Enterprise.</em></p>
 <h2>1. Executive Overview & Objectives</h2>
 <p>This document details the operational strategy, resource allocation, and timeline milestones for <strong>${topic}</strong>.</p>
-<h2>2. Deliverables & Action Items</h2>
-<ul>
-  <li>Milestone A: Architecture & User Alignment</li>
-  <li>Milestone B: Multi-model AI Integration & Data Sync</li>
-  <li>Milestone C: Production Verification & Monitoring</li>
-</ul>
-<h2>3. Risk Mitigation & Sovereign Boundaries</h2>
+<h2>2. Deliverables & Action Matrix</h2>
+<table style="width:100%; border-collapse:collapse; margin:16px 0;">
+  <thead>
+    <tr style="background:#185abd; color:white;">
+      <th style="border:1px solid #d2d0ce; padding:8px 12px; text-align:left;">Deliverable</th>
+      <th style="border:1px solid #d2d0ce; padding:8px 12px; text-align:left;">Responsible Team</th>
+      <th style="border:1px solid #d2d0ce; padding:8px 12px; text-align:left;">Target SLA</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="border:1px solid #d2d0ce; padding:8px 12px;">Architecture Blueprint</td>
+      <td style="border:1px solid #d2d0ce; padding:8px 12px;">Core Engineering</td>
+      <td style="border:1px solid #d2d0ce; padding:8px 12px;">Completed</td>
+    </tr>
+    <tr style="background:#f8f9fa;">
+      <td style="border:1px solid #d2d0ce; padding:8px 12px;">Multi-Model AI Failover</td>
+      <td style="border:1px solid #d2d0ce; padding:8px 12px;">AI Operations</td>
+      <td style="border:1px solid #d2d0ce; padding:8px 12px;">Active</td>
+    </tr>
+  </tbody>
+</table>
+<h2>3. Risk Mitigation & Compliance Standards</h2>
 <p>All data remains on-device with zero unauthorized exfiltration.</p>`;
 
       setActiveDocTitle(`${topic}.docx`);
       setActiveDocContent(docContent);
-      toast.success('Document drafted into Word!');
+      toast.success('Document drafted into Word! Click "Open in Word" below.');
     }
     // Excel Spreadsheet generation
     else if (lower.includes('spreadsheet') || lower.includes('excel') || lower.includes('budget') || lower.includes('expense') || lower.includes('calculate')) {
       const customData: Record<string, string> = {
-        'A1': 'Quarter', 'B1': 'Sales ($)', 'C1': 'Expenses ($)', 'D1': 'Net Profit ($)', 'E1': 'Growth',
-        'A2': 'Q1', 'B2': '125000', 'C2': '85000', 'D2': '=B2-C2', 'E2': '12%',
-        'A3': 'Q2', 'B3': '155000', 'C3': '92000', 'D3': '=B3-C3', 'E3': '24%',
-        'A4': 'Q3', 'B4': '190000', 'C4': '104000', 'D4': '=B4-C4', 'E4': '22%',
-        'A5': 'Q4', 'B5': '240000', 'C5': '120000', 'D5': '=B5-C5', 'E5': '26%',
-        'A6': 'Total', 'B6': '=SUM(B2:B5)', 'C6': '=SUM(C2:C5)', 'D6': '=SUM(D2:D5)', 'E6': 'Annual Total',
+        'A1': 'Product / Offering', 'B1': 'Department', 'C1': 'Budget ($)', 'D1': 'Actual ($)', 'E1': 'Variance ($)', 'F1': 'Status',
+        'A2': 'Cloud Compute & Storage', 'B2': 'Engineering', 'C2': '15000', 'D2': '13800', 'E2': '=C2-D2', 'F2': 'Under Budget',
+        'A3': 'AI Assistant Enterprise', 'B3': 'Product', 'C3': '25000', 'D3': '22500', 'E3': '=C3-D3', 'F3': 'Under Budget',
+        'A4': 'Security Compliance Suite', 'B4': 'Cybersecurity', 'C4': '12000', 'D4': '14100', 'E4': '=C4-D4', 'F4': 'Over Budget',
+        'A5': 'Developer Tooling API', 'B5': 'Infrastructure', 'C5': '8000', 'D5': '7500', 'E5': '=C5-D5', 'F5': 'Under Budget',
+        'A6': '', 'B6': '', 'C6': '', 'D6': '', 'E6': '', 'F6': '',
+        'A7': 'Total Operations', 'B7': 'Summary', 'C7': '=SUM(C2:C5)', 'D7': '=SUM(D2:D5)', 'E7': '=SUM(E2:E5)', 'F7': 'Net Under Budget',
       };
       setSpreadsheetData(customData);
-      toast.success('Spreadsheet data created in Excel!');
+      toast.success('Spreadsheet model created in Excel! Click "Open in Excel" below.');
     }
 
     // Call live Yella AI with automatic Gemini rate-limit failover
@@ -249,6 +273,28 @@ export function AIChat() {
                 }`}
               >
                 <div className="whitespace-pre-line">{msg.content}</div>
+                {!isUser && (
+                  <div className="pt-2 mt-2 border-t border-gray-100 flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setCurrentApp('document')}
+                      className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-[#185abd] rounded font-bold text-[10px] flex items-center gap-1"
+                    >
+                      📄 Open in Word
+                    </button>
+                    <button
+                      onClick={() => setCurrentApp('spreadsheet')}
+                      className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-[#107c41] rounded font-bold text-[10px] flex items-center gap-1"
+                    >
+                      📊 Open in Excel
+                    </button>
+                    <button
+                      onClick={() => setCurrentApp('presentation')}
+                      className="px-2 py-0.5 bg-orange-50 hover:bg-orange-100 text-[#c43e1c] rounded font-bold text-[10px] flex items-center gap-1"
+                    >
+                      🎨 Open in PowerPoint
+                    </button>
+                  </div>
+                )}
                 <div className="text-[10px] text-[#8a8886] mt-1.5 text-right">
                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
