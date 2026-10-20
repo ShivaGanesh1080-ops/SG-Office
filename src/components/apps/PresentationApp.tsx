@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { OfficeLogo } from '../common/OfficeLogo';
 import {
   Presentation,
   Plus,
@@ -574,6 +575,7 @@ export function PresentationApp() {
       <div className="flex items-center justify-between px-3 h-10 bg-[#c43e1c] text-white border-b border-[#a43417] flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <div className="flex items-center gap-1.5 font-bold text-sm tracking-wide">
+            <OfficeLogo size={20} className="mr-0.5" />
             <div className="w-5 h-5 rounded bg-white text-[#c43e1c] flex items-center justify-center font-black text-xs shadow-xs">
               P
             </div>
@@ -764,7 +766,7 @@ export function PresentationApp() {
               onClick={toggleAIPanel}
               className="flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded font-semibold border border-purple-200"
             >
-              <Sparkles size={13} /> Open Copilot Panel
+              <Sparkles size={13} /> Open Yella AI Panel
             </button>
           </div>
         )}

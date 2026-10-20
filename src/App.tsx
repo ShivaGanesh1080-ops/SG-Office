@@ -19,6 +19,15 @@ import { Toaster } from 'react-hot-toast';
 function App() {
   const { currentApp, aiPanelOpen, searchOpen } = useStore();
 
+  // These full-featured apps have their own authentic Microsoft/Google/IDE headers:
+  const hasAppHeader = [
+    'document',
+    'spreadsheet',
+    'presentation',
+    'email',
+    'code-editor',
+  ].includes(currentApp || '');
+
   const renderApp = () => {
     switch (currentApp) {
       case 'document':
@@ -48,15 +57,24 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#f3f2f1] text-[#201f1e]">
+      {/* 1. Left Sidebar: Independent Full-Height Navigation Rail */}
       <Sidebar />
+
+      {/* 2. Right Workspace: Clean, unstacked layout */}
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
-        <TopBar />
-        <main className="flex-1 overflow-hidden min-w-0">
+        {!hasAppHeader && <TopBar />}
+        <main className="flex-1 overflow-hidden min-w-0 relative">
           {renderApp()}
         </main>
       </div>
+
+      {/* Slide-in Yella AI Assistant */}
       {aiPanelOpen && <AIPanelSlider />}
+
+      {/* Command Palette */}
       {searchOpen && <CommandPalette />}
+
+      {/* Toast Notifications */}
       <Toaster
         position="bottom-right"
         toastOptions={{

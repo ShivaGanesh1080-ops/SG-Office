@@ -275,7 +275,7 @@ export function AIPanelSlider() {
             <h3 className="font-bold text-xs flex items-center gap-1.5 text-[#201f1e]">
               <span>Yella AI</span>
               <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-700">
-                M365 Copilot
+                Personalized Assistant
               </span>
             </h3>
             <p className="text-[10px] text-[#605e5c] truncate">
@@ -295,7 +295,7 @@ export function AIPanelSlider() {
           <button
             onClick={toggleAIPanel}
             className="p-1 hover:bg-[#edebe9] rounded text-[#605e5c]"
-            title="Close Copilot"
+            title="Close Yella AI"
           >
             <X size={15} />
           </button>

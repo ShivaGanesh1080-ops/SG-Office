@@ -77,12 +77,12 @@ The Google Workspace Team`,
   },
   {
     id: 'e2',
-    from: 'Satya Nadella (Executive)',
-    fromEmail: 'satya.nadella@enterprise.com',
+    from: 'Executive Leadership',
+    fromEmail: 'leadership@enterprise.com',
     to: 'me',
-    subject: 'Incredible progress on SG-Office 365 Architecture',
-    preview: 'Hi Shiva, I reviewed the updated Office 365 Ribbon and Excel calculation engine...',
-    body: `Hi Shiva,
+    subject: 'Executive Review: Enterprise Office 365 Architecture',
+    preview: 'I reviewed the updated Office 365 Ribbon and Excel calculation engine...',
+    body: `Hello Team,
 
 I reviewed the updated Office 365 suite. The single-row responsive Ribbon, TipTap Word tables, and Excel live formula calculation engine are phenomenal.
 
@@ -91,7 +91,7 @@ Having Yella AI automatically handle rate-limit failovers across Gemini models i
 Keep up the outstanding engineering velocity.
 
 Warm regards,
-Satya Nadella`,
+Executive Leadership`,
     date: '10:15 AM',
     read: false,
     starred: true,
@@ -116,14 +116,15 @@ Satya Nadella`,
   },
   {
     id: 'e4',
-    from: 'GitHub Notifications',
+    from: 'GitHub Actions',
     fromEmail: 'notifications@github.com',
     to: 'me',
-    subject: '[ShivaGanesh1080-ops/SG-Office] Production deployment succeeded',
+    subject: 'Production Deployment Succeeded (Build Verification 100%)',
     preview: 'Your latest commit successfully built and deployed in 25 seconds with 0 errors...',
-    body: `Run 39467885944 completed successfully on branch main.
-Artifacts: github-pages (1,217 kB).
-Status: Live and operational.`,
+    body: `Continuous Delivery Pipeline:
+Target: Production Branch (main)
+Status: Live and operational.
+Zero build warnings, all modules compiled cleanly.`,
     date: 'Oct 20',
     read: true,
     starred: false,

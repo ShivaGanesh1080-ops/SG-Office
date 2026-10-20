@@ -222,13 +222,13 @@ export function AIChat() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-[#201f1e] leading-tight">Yella AI Copilot</h2>
+              <h2 className="text-sm font-bold text-[#201f1e] leading-tight">Yella AI</h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-50 text-purple-700 border border-purple-200 font-semibold flex items-center gap-1">
                 <span className={`w-1.5 h-1.5 rounded-full ${apiKeyInput ? 'bg-emerald-500 animate-pulse' : 'bg-purple-500'}`} />
                 {apiKeyInput ? `${currentActiveModel} • Auto-Switch Active` : 'Autonomous Core'}
               </span>
             </div>
-            <p className="text-[11px] text-[#605e5c]">Personalized Workspace Intelligence for SG-Office</p>
+            <p className="text-[11px] text-[#605e5c]">Personalized Workspace Intelligence &amp; Multi-Model Automation</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

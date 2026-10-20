@@ -80,10 +80,10 @@ export function CalendarApp() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => toast.success('Copilot resolved calendar conflicts')}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold copilot-gradient text-white"
+              onClick={() => toast.success('Yella AI resolved calendar conflicts')}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold copilot-gradient text-white cursor-pointer"
             >
-              <Sparkles size={12} /> Copilot Schedule
+              <Sparkles size={12} /> Yella Smart Schedule
             </button>
             <button
               onClick={() => setShowNewEventModal(true)}

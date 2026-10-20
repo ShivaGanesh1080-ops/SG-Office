@@ -259,9 +259,9 @@ export function SettingsApp() {
 
         {(activeTab === 'storage' || activeTab === 'account') && (
           <div className="p-5 rounded-xl border border-[#edebe9] bg-white shadow-2xs space-y-2">
-            <h3 className="text-xs font-bold text-[#201f1e]">Workspace Profile: SG-Office Pro</h3>
+            <h3 className="text-xs font-bold text-[#201f1e]">Enterprise Workspace: Microsoft 365 AI Suite</h3>
             <p className="text-xs text-[#605e5c]">
-              Personalized for Shiva Ganesh. Real-time document rendering, formula parsing, and live Gemini AI integration active.
+              Real-time document rendering, live formula parsing, and multi-model autonomous Gemini AI integration active.
             </p>
           </div>
         )}

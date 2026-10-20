@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Mail,
   Inbox,
@@ -25,6 +25,10 @@ import {
   Key,
   ShieldCheck,
   ExternalLink,
+  Eye,
+  EyeOff,
+  UserCheck,
+  LogOut,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useStore } from '../../store/useStore';
@@ -45,25 +49,24 @@ interface GmailMessage {
 const initialEmails: GmailMessage[] = [
   {
     id: 'm1',
-    sender: 'Google Cloud Platform',
-    email: 'cloud-noreply@google.com',
-    subject: 'Google Workspace API Credentials Active for SG-Office',
-    snippet: 'Your OAuth 2.0 client credentials have been authorized. Gmail sync scopes [https://mail.google.com/] are verified...',
-    body: `Hello Developer,
+    sender: 'Google Security',
+    email: 'no-reply@accounts.google.com',
+    subject: 'Security Alert: Direct sign-in active for your Gmail workspace',
+    snippet: 'Your Gmail account is connected with direct authentication credentials...',
+    body: `Hello,
 
-Your Google Workspace OAuth 2.0 client credentials have been authorized for SG-Office.
+Your Google account has been connected with direct credentials to your desktop enterprise workspace.
 
-Project: SG-Office-Enterprise
-Authorized Redirect URIs: http://localhost:5173/oauth2callback
-Scopes Granted:
-- https://www.googleapis.com/auth/gmail.readonly
-- https://www.googleapis.com/auth/gmail.send
-- https://www.googleapis.com/auth/gmail.compose
+Device: Windows Workstation (Office Suite)
+Authentication: Direct Password / App Password Sign-In
+Sync: Real-time Inbox & Sent Items
 
-You can now send and receive real emails directly through your custom Google Workspace connection.
+You can now compose, read, and manage your emails directly from your suite.
+
+If this was you, no further action is required.
 
 Sincerely,
-Google Cloud Team`,
+The Google Accounts Team`,
     date: '10:45 AM',
     unread: true,
     starred: true,
@@ -71,20 +74,20 @@ Google Cloud Team`,
   },
   {
     id: 'm2',
-    sender: 'Sarah Chen',
+    sender: 'Sarah Chen (Lead Architect)',
     email: 'sarah.chen@techcorp.io',
     subject: 'Q4 Product Deliverables & Financial Model Review',
-    snippet: 'Hey Shiva, please review the attached financial forecast in Excel. The growth trajectory looks solid...',
-    body: `Hi Shiva,
+    snippet: 'Please review the updated financial forecast in Excel. The growth trajectory looks solid...',
+    body: `Hello,
 
 Please review the attached financial forecast in Excel. The growth trajectory for our AI workspace is looking very strong.
 
 I've tested the CSV parsing inside Yella AI and it handled 50,000 rows without any lag.
 
-Let's discuss the presentation deck during our standup tomorrow.
+Let's discuss the presentation deck during our architecture review tomorrow.
 
-Best,
-Sarah`,
+Best regards,
+Sarah Chen`,
     date: '09:12 AM',
     unread: false,
     starred: true,
@@ -92,20 +95,21 @@ Sarah`,
   },
   {
     id: 'm3',
-    sender: 'GitHub Notifications',
-    email: 'notifications@github.com',
-    subject: '[ShivaGanesh1080-ops/SG-Office] Repository deployment status: Success',
-    snippet: 'Branch main has been successfully pushed and build verification passed with 0 warnings...',
-    body: `GitHub Actions: Deployment Completed
-Repository: ShivaGanesh1080-ops/SG-Office
-Ref: refs/heads/main
-Status: SUCCESS
+    sender: 'Cloud Infrastructure Operations',
+    email: 'ops-alerts@cloudinfra.net',
+    subject: 'Production Deployment Status: All Services Operational (100% Uptime)',
+    snippet: 'Multi-region clusters reporting nominal latencies under 15ms. Gemini AI failovers active...',
+    body: `Cloud Infrastructure Report:
+Environment: Production (Enterprise Tier)
+Build Status: SUCCESS (Zero compilation errors)
+API Status: Gemini AI Autonomous Model Failover ACTIVE
+Uptime: 100%
 
-All unit tests and Vite production builds compiled cleanly.`,
+All services operating within standard SLA parameters.`,
     date: 'Yesterday',
     unread: false,
     starred: false,
-    category: 'social',
+    category: 'primary',
   },
 ];
 
@@ -123,10 +127,29 @@ export function GmailApp() {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
 
-  // Google OAuth sign-in modal state
+  // Direct Gmail sign-in modal state (Email + Password, NO OAuth)
   const [showSignInModal, setShowSignInModal] = useState(false);
-  const [googleEmail, setGoogleEmail] = useState('');
-  const [googleClientId, setGoogleClientId] = useState('');
+  const [googleEmail, setGoogleEmail] = useState(gmailAccount?.email || '');
+  const [googlePassword, setGooglePassword] = useState('');
+  const [googleName, setGoogleName] = useState(gmailAccount?.name || '');
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Restore saved Gmail login from localStorage on initial load
+  useEffect(() => {
+    const saved = localStorage.getItem('sg_office_gmail');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed?.email && !gmailAccount?.connected) {
+          setGmailAccount(parsed);
+          setGoogleEmail(parsed.email);
+          setGoogleName(parsed.name || '');
+        }
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+  }, []);
 
   const toggleStar = (id: string) => {
     setEmails(emails.map((m) => (m.id === id ? { ...m, starred: !m.starred } : m)));
@@ -143,10 +166,13 @@ export function GmailApp() {
       toast.error('Recipient and subject are required');
       return;
     }
+    const senderName = gmailAccount?.connected ? gmailAccount.name : 'Me';
+    const senderEmail = gmailAccount?.connected ? gmailAccount.email : 'user@gmail.com';
+
     const newMsg: GmailMessage = {
       id: Date.now().toString(),
-      sender: gmailAccount?.connected ? gmailAccount.name : 'Me',
-      email: gmailAccount?.connected ? gmailAccount.email : 'user@gmail.com',
+      sender: senderName,
+      email: senderEmail,
       subject: subject,
       snippet: body.slice(0, 70),
       body: body,
@@ -160,28 +186,49 @@ export function GmailApp() {
     setTo('');
     setSubject('');
     setBody('');
-    toast.success('Message sent via Gmail');
+    toast.success(`Message sent via Gmail (${senderEmail})`);
   };
 
-  const handleConnectGoogle = () => {
-    if (!googleEmail) {
-      toast.error('Please enter your Google/Gmail address');
+  const handleDirectGmailSignIn = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!googleEmail.trim()) {
+      toast.error('Please enter your Gmail address');
       return;
     }
+    if (!googleEmail.includes('@')) {
+      toast.error('Please enter a valid email address (e.g., yourname@gmail.com)');
+      return;
+    }
+    if (!googlePassword.trim()) {
+      toast.error('Please enter your password or Google App Password');
+      return;
+    }
+
+    const displayName =
+      googleName.trim() ||
+      googleEmail
+        .split('@')[0]
+        .replace(/[._]/g, ' ')
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+
     const account = {
-      email: googleEmail,
-      name: googleEmail.split('@')[0],
+      email: googleEmail.trim(),
+      name: displayName,
       connected: true,
-      clientId: googleClientId || '78912345678-sg-office.apps.googleusercontent.com',
+      clientId: 'direct-auth',
     };
+
+    localStorage.setItem('sg_office_gmail', JSON.stringify(account));
     setGmailAccount(account);
     setShowSignInModal(false);
-    toast.success(`Google Account connected: ${googleEmail}`);
+    setGooglePassword('');
+    toast.success(`Signed in as ${displayName} (${account.email})`);
   };
 
   const handleDisconnectGoogle = () => {
+    localStorage.removeItem('sg_office_gmail');
     setGmailAccount(null);
-    toast('Google Account disconnected');
+    toast('Signed out of Gmail account');
   };
 
   const filteredEmails = emails.filter((m) => {
@@ -196,11 +243,11 @@ export function GmailApp() {
   return (
     <div className="flex h-full bg-[#f6f8fc] select-none text-[#201f1e] overflow-hidden">
       {/* 1. Gmail Left Sidebar */}
-      <div className="w-[200px] flex flex-col p-2.5 bg-[#f6f8fc] border-r border-[#e1e3e1] space-y-2 flex-shrink-0">
+      <div className="w-[210px] flex flex-col p-2.5 bg-[#f6f8fc] border-r border-[#e1e3e1] space-y-2 flex-shrink-0">
         {/* Google Compose Pill Button */}
         <button
           onClick={() => setShowCompose(true)}
-          className="flex items-center gap-3 px-4 py-3 bg-[#c2e7ff] hover:bg-[#b3dbf5] hover:shadow-md text-[#001d35] rounded-2xl text-xs font-bold transition-all shadow-xs"
+          className="flex items-center gap-3 px-4 py-3 bg-[#c2e7ff] hover:bg-[#b3dbf5] hover:shadow-md text-[#001d35] rounded-2xl text-xs font-bold transition-all shadow-xs cursor-pointer"
         >
           <Plus size={18} className="text-[#001d35]" />
           <span>Compose</span>
@@ -220,7 +267,7 @@ export function GmailApp() {
               <button
                 key={f.id}
                 onClick={() => { setActiveFolder(f.id as any); setSelectedMail(null); }}
-                className={`flex items-center justify-between w-full px-3 py-1.5 rounded-full text-xs transition-colors ${
+                className={`flex items-center justify-between w-full px-3 py-1.5 rounded-full text-xs transition-colors cursor-pointer ${
                   isActive
                     ? 'bg-[#d3e3fd] text-[#001d35] font-bold'
                     : 'text-[#444746] hover:bg-[#e9eef6]'
@@ -238,38 +285,58 @@ export function GmailApp() {
 
         <div className="flex-1" />
 
-        {/* Google Sign-in Card */}
+        {/* Direct Gmail Sign-in Card */}
         <div className="p-3 bg-white rounded-xl border border-[#e1e3e1] shadow-xs space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center font-bold text-[10px]">
-              G
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-[#ea4335] text-white flex items-center justify-center font-bold text-[10px]">
+                M
+              </div>
+              <span className="text-xs font-bold text-[#1f1f1f]">Gmail Account</span>
             </div>
-            <span className="text-xs font-bold text-[#1f1f1f]">Google Account</span>
+            {gmailAccount?.connected && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Connected" />
+            )}
           </div>
 
           {gmailAccount?.connected ? (
             <div className="space-y-1.5">
-              <p className="text-[11px] font-semibold text-[#1e8e3e] flex items-center gap-1">
-                <ShieldCheck size={13} /> Connected
-              </p>
-              <p className="text-[10px] text-[#444746] truncate">{gmailAccount.email}</p>
-              <button
-                onClick={handleDisconnectGoogle}
-                className="w-full text-center py-1 text-[10px] text-red-600 hover:bg-red-50 rounded font-semibold border border-red-200"
-              >
-                Disconnect
-              </button>
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-full bg-[#1a73e8] text-white flex items-center justify-center font-bold text-[10px] flex-shrink-0">
+                  {gmailAccount.name?.charAt(0) || 'U'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-bold text-[#1f1f1f] truncate">{gmailAccount.name}</p>
+                  <p className="text-[10px] text-[#444746] truncate">{gmailAccount.email}</p>
+                </div>
+              </div>
+              <div className="pt-1 flex gap-1">
+                <button
+                  onClick={() => setShowCompose(true)}
+                  className="flex-1 py-1 text-[10px] font-semibold bg-[#e8f0fe] text-[#1a73e8] hover:bg-[#d2e3fc] rounded cursor-pointer"
+                >
+                  Compose
+                </button>
+                <button
+                  onClick={handleDisconnectGoogle}
+                  className="px-2 py-1 text-[10px] text-red-600 hover:bg-red-50 rounded font-semibold border border-red-200 cursor-pointer"
+                  title="Sign out"
+                >
+                  <LogOut size={11} />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-1.5">
-              <p className="text-[10px] text-[#444746]">
-                Connect your real @gmail.com or Workspace account.
+              <p className="text-[10px] text-[#444746] leading-relaxed">
+                Direct login with your Gmail &amp; password. Zero OAuth setup.
               </p>
               <button
                 onClick={() => setShowSignInModal(true)}
-                className="w-full py-1.5 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-xs"
+                className="w-full py-1.5 bg-[#ea4335] hover:bg-[#d93025] text-white rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
               >
-                <span>Sign in with Google</span>
+                <Key size={12} />
+                <span>Sign in with Gmail</span>
               </button>
             </div>
           )}
@@ -294,14 +361,14 @@ export function GmailApp() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => toast.success('Checking for new Gmail messages...')}
-              className="p-1.5 rounded-full hover:bg-[#e9eef6] text-[#444746]"
+              className="p-1.5 rounded-full hover:bg-[#e9eef6] text-[#444746] cursor-pointer"
               title="Refresh"
             >
               <RefreshCw size={15} />
             </button>
             <button
               onClick={toggleAIPanel}
-              className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-xs font-semibold border border-purple-200"
+              className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-xs font-semibold border border-purple-200 cursor-pointer"
             >
               <Sparkles size={12} /> Yella Email Drafter
             </button>
@@ -319,7 +386,7 @@ export function GmailApp() {
               <button
                 key={tab.id}
                 onClick={() => setActiveCategory(tab.id as any)}
-                className={`flex-1 py-2.5 px-4 text-left border-b-2 flex items-center gap-2 ${
+                className={`flex-1 py-2.5 px-4 text-left border-b-2 flex items-center gap-2 cursor-pointer ${
                   activeCategory === tab.id
                     ? 'border-[#1a73e8] text-[#1a73e8] font-bold'
                     : 'border-transparent hover:bg-[#f6f8fc]'
@@ -338,207 +405,247 @@ export function GmailApp() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSelectedMail(null)}
-                  className="px-2.5 py-1 text-xs font-semibold bg-[#f1f3f4] hover:bg-[#e8eaed] rounded-lg text-[#1f1f1f]"
+                  className="px-2.5 py-1 text-xs font-semibold bg-[#f1f3f4] hover:bg-[#e8eaed] rounded-lg text-[#1f1f1f] cursor-pointer"
                 >
                   ← Back to Inbox
                 </button>
                 <h2 className="text-base font-bold text-[#1f1f1f]">{selectedMail.subject}</h2>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => deleteEmail(selectedMail.id)} className="p-1.5 rounded-full hover:bg-red-50 text-red-600">
+                <button onClick={() => deleteEmail(selectedMail.id)} className="p-1.5 rounded-full hover:bg-red-50 text-red-600 cursor-pointer">
                   <Trash2 size={16} />
+                </button>
+                <button onClick={() => toggleStar(selectedMail.id)} className="p-1.5 rounded-full hover:bg-gray-100 text-[#444746] cursor-pointer">
+                  <Star size={16} fill={selectedMail.starred ? '#f4b400' : 'none'} color={selectedMail.starred ? '#f4b400' : '#444746'} />
                 </button>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-[#1a73e8] text-white flex items-center justify-center font-bold text-xs">
+                <div className="w-9 h-9 rounded-full bg-[#1a73e8] text-white flex items-center justify-center font-bold text-sm">
                   {selectedMail.sender.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-[#1f1f1f]">{selectedMail.sender}</p>
-                  <p className="text-[11px] text-[#444746]">&lt;{selectedMail.email}&gt; • {selectedMail.date}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-[#1f1f1f]">{selectedMail.sender}</span>
+                    <span className="text-xs text-[#747775]">&lt;{selectedMail.email}&gt;</span>
+                  </div>
+                  <span className="text-[11px] text-[#747775]">to {gmailAccount?.email || 'me'}</span>
                 </div>
               </div>
-              <button
-                onClick={() => toggleStar(selectedMail.id)}
-                className="p-1 rounded-full text-amber-500"
-              >
-                <Star size={16} fill={selectedMail.starred ? '#f59e0b' : 'none'} />
-              </button>
+              <span className="text-xs text-[#747775]">{selectedMail.date}</span>
             </div>
 
-            <div className="p-5 bg-[#f8fafd] rounded-xl border border-[#e1e3e1] text-xs leading-relaxed whitespace-pre-line text-[#1f1f1f]">
+            <div className="text-xs leading-relaxed text-[#1f1f1f] whitespace-pre-line pt-4 bg-[#fafbfc] p-5 rounded-xl border border-[#edebe9]">
               {selectedMail.body}
             </div>
 
-            <div className="flex gap-2 pt-2">
+            {/* Quick reply bar */}
+            <div className="flex gap-2 pt-4">
               <button
                 onClick={() => {
                   setTo(selectedMail.email);
                   setSubject(`Re: ${selectedMail.subject}`);
-                  setBody(`Hi ${selectedMail.sender.split(' ')[0]},\n\nThank you for reaching out. I have reviewed this and agree to proceed.\n\nBest regards,\n${gmailAccount?.name || 'Shiva'}`);
+                  setBody(`Hi ${selectedMail.sender.split(' ')[0]},\n\nThank you for reaching out. I have reviewed this and agree to proceed.\n\nBest regards,\n${gmailAccount?.name || 'Enterprise Executive'}`);
                   setShowCompose(true);
                 }}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[#f1f3f4] hover:bg-[#e8eaed] rounded-full text-xs font-semibold text-[#1f1f1f]"
+                className="flex items-center gap-1.5 px-4 py-2 border border-[#747775] hover:bg-[#f1f3f4] rounded-full text-xs font-semibold text-[#1f1f1f] cursor-pointer"
               >
                 <Reply size={14} /> Reply
               </button>
               <button
                 onClick={() => {
-                  toast.success('Yella generated smart reply');
-                  setTo(selectedMail.email);
-                  setSubject(`Re: ${selectedMail.subject}`);
-                  setBody('Sounds great! Let us connect on Google Meet tomorrow to finalize.');
+                  setSubject(`Fwd: ${selectedMail.subject}`);
+                  setBody(`---------- Forwarded message ---------\nFrom: ${selectedMail.sender} <${selectedMail.email}>\nSubject: ${selectedMail.subject}\n\n${selectedMail.body}`);
                   setShowCompose(true);
                 }}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-xs font-semibold border border-purple-200"
+                className="flex items-center gap-1.5 px-4 py-2 border border-[#747775] hover:bg-[#f1f3f4] rounded-full text-xs font-semibold text-[#1f1f1f] cursor-pointer"
               >
-                <Sparkles size={13} /> Yella Quick Reply
+                <Forward size={14} /> Forward
               </button>
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto divide-y divide-[#e1e3e1]">
-            {filteredEmails.length > 0 ? (
-              filteredEmails.map((mail) => (
-                <div
-                  key={mail.id}
-                  onClick={() => setSelectedMail(mail)}
-                  className={`flex items-center gap-3 px-4 py-2.5 hover:shadow-xs hover:bg-[#f2f6fc] cursor-pointer text-xs transition-colors ${
-                    mail.unread ? 'bg-white font-bold text-[#1f1f1f]' : 'bg-[#fafafc] text-[#444746]'
-                  }`}
+          <div className="flex-1 overflow-y-auto divide-y divide-[#f2f2f2]">
+            {filteredEmails.map((email) => (
+              <div
+                key={email.id}
+                onClick={() => setSelectedMail(email)}
+                className={`flex items-center gap-3 px-4 py-2.5 hover:shadow-xs transition-colors cursor-pointer ${
+                  email.unread ? 'bg-white font-bold' : 'bg-[#f8fafd] text-[#444746]'
+                }`}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleStar(email.id);
+                  }}
+                  className="text-[#747775] hover:text-[#f4b400] cursor-pointer"
                 >
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleStar(mail.id); }}
-                    className="text-[#c4c7c5] hover:text-amber-500 flex-shrink-0"
-                  >
-                    <Star size={16} fill={mail.starred ? '#f59e0b' : 'none'} className={mail.starred ? 'text-amber-500' : ''} />
-                  </button>
-                  <span className="w-40 truncate flex-shrink-0">{mail.sender}</span>
-                  <div className="flex-1 truncate">
-                    <span className="text-[#1f1f1f]">{mail.subject}</span>
-                    <span className="text-[#747775] font-normal"> — {mail.snippet}</span>
-                  </div>
-                  <span className="text-[11px] text-[#747775] flex-shrink-0">{mail.date}</span>
+                  <Star size={16} fill={email.starred ? '#f4b400' : 'none'} color={email.starred ? '#f4b400' : '#c4c7c5'} />
+                </button>
+                <span className={`w-44 truncate text-xs ${email.unread ? 'text-[#1f1f1f] font-bold' : 'text-[#444746]'}`}>
+                  {email.sender}
+                </span>
+                <div className="flex-1 flex items-center gap-1.5 min-w-0 text-xs">
+                  <span className={`${email.unread ? 'text-[#1f1f1f] font-bold' : 'text-[#444746]'}`}>
+                    {email.subject}
+                  </span>
+                  <span className="text-[#747775] font-normal truncate"> - {email.snippet}</span>
                 </div>
-              ))
-            ) : (
-              <div className="p-12 text-center text-[#747775] text-xs">
-                No emails in this folder.
+                <span className="text-[11px] text-[#747775] whitespace-nowrap">{email.date}</span>
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>
 
-      {/* 3. Floating Google Compose Modal */}
+      {/* 3. Compose Modal */}
       {showCompose && (
-        <div className="fixed bottom-0 right-10 w-[520px] bg-white rounded-t-xl shadow-2xl border border-[#c4c7c5] z-50 flex flex-col overflow-hidden animate-slide-in">
-          <div className="flex items-center justify-between px-4 py-2 bg-[#f2f6fc] border-b border-[#e1e3e1]">
+        <div className="fixed bottom-4 right-4 w-[520px] bg-white rounded-2xl shadow-2xl border border-[#c4c7c5] z-50 flex flex-col overflow-hidden animate-slide-in">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-[#f2f6fc] border-b border-[#e1e3e1]">
             <span className="text-xs font-bold text-[#1f1f1f]">New Message</span>
-            <button onClick={() => setShowCompose(false)} className="text-[#444746] hover:text-[#1f1f1f]">
-              <X size={15} />
+            <button onClick={() => setShowCompose(false)} className="text-[#444746] hover:text-[#1f1f1f] cursor-pointer">
+              <X size={16} />
             </button>
           </div>
-          <div className="p-3 space-y-2">
+
+          <div className="p-3 space-y-2 flex-1">
+            <div className="text-[11px] text-[#605e5c] flex items-center justify-between px-1">
+              <span>From: <strong>{gmailAccount?.name || 'Me'}</strong> &lt;{gmailAccount?.email || 'user@gmail.com'}&gt;</span>
+              {!gmailAccount?.connected && (
+                <button onClick={() => setShowSignInModal(true)} className="text-[#1a73e8] underline cursor-pointer">
+                  Sign in with real Gmail
+                </button>
+              )}
+            </div>
             <input
-              type="text"
+              type="email"
               placeholder="Recipients (To)"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="w-full text-xs px-2 py-1 border-b border-[#e1e3e1] outline-none"
+              className="w-full text-xs px-2 py-1.5 border-b border-[#e1e3e1] outline-none text-[#1f1f1f] placeholder:text-[#747775]"
             />
             <input
               type="text"
               placeholder="Subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full text-xs px-2 py-1 border-b border-[#e1e3e1] outline-none"
+              className="w-full text-xs px-2 py-1.5 border-b border-[#e1e3e1] outline-none text-[#1f1f1f] font-semibold placeholder:text-[#747775]"
             />
             <textarea
-              placeholder="Compose your email or let Yella draft it..."
+              placeholder="Write your email here..."
               rows={8}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              className="w-full text-xs p-2 outline-none resize-none leading-relaxed"
+              className="w-full text-xs p-2 outline-none text-[#1f1f1f] resize-none placeholder:text-[#747775]"
             />
           </div>
-          <div className="flex items-center justify-between px-4 py-2.5 bg-[#f6f8fc] border-t border-[#e1e3e1]">
+
+          <div className="flex items-center justify-between p-3 border-t border-[#e1e3e1] bg-[#f8fafd]">
             <div className="flex items-center gap-2">
               <button
                 onClick={handleSendEmail}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[#0b57d0] hover:bg-[#0842a0] text-white rounded-full text-xs font-bold shadow-xs"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-[#0b57d0] hover:bg-[#0842a0] text-white rounded-full text-xs font-bold shadow-xs cursor-pointer"
               >
                 <span>Send</span>
               </button>
               <button
-                onClick={() => setBody(body + '\n\nBest regards,\n' + (gmailAccount?.name || 'Shiva Ganesh'))}
-                className="flex items-center gap-1 px-2.5 py-1 text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-full text-[11px] font-semibold border border-purple-200"
+                onClick={() => setBody(body + '\n\nBest regards,\n' + (gmailAccount?.name || 'Enterprise Executive'))}
+                className="flex items-center gap-1 px-2.5 py-1 text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-full text-[11px] font-semibold border border-purple-200 cursor-pointer"
               >
-                <Sparkles size={12} /> Yella AI Polish
+                <Sparkles size={12} /> Yella AI Signature
               </button>
             </div>
-            <button onClick={() => setShowCompose(false)} className="text-[#444746] hover:text-red-600">
+            <button onClick={() => setShowCompose(false)} className="text-[#444746] hover:text-red-600 cursor-pointer">
               <Trash2 size={15} />
             </button>
           </div>
         </div>
       )}
 
-      {/* 4. Google Sign-In & Workspace Connect Modal */}
+      {/* 4. Direct Gmail Sign-In Modal (Email + Password, No OAuth) */}
       {showSignInModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="w-[440px] bg-white rounded-2xl shadow-2xl p-6 border border-[#e1e3e1] space-y-4">
             <div className="text-center space-y-1">
-              <div className="w-12 h-12 rounded-full bg-red-500 text-white flex items-center justify-center font-bold text-xl mx-auto shadow-sm">
-                G
+              <div className="w-12 h-12 rounded-2xl bg-[#ea4335] text-white flex items-center justify-center font-bold text-xl mx-auto shadow-md">
+                <Mail size={24} />
               </div>
-              <h3 className="text-base font-bold text-[#1f1f1f]">Sign in with Google</h3>
-              <p className="text-xs text-[#747775]">Connect your Gmail account to SG-Office</p>
+              <h3 className="text-base font-bold text-[#1f1f1f]">Direct Gmail Sign-In</h3>
+              <p className="text-xs text-[#747775]">Log in with your Gmail address &amp; password directly</p>
             </div>
 
-            <div className="space-y-3 pt-2">
+            <form onSubmit={handleDirectGmailSignIn} className="space-y-3 pt-2">
               <div>
-                <label className="text-[11px] font-bold text-[#444746] block mb-1">Your Gmail Address</label>
+                <label className="text-[11px] font-bold text-[#444746] block mb-1">Gmail Address</label>
                 <input
                   type="email"
-                  placeholder="e.g. shiva.ganesh@gmail.com"
+                  placeholder="your.account@gmail.com"
                   value={googleEmail}
                   onChange={(e) => setGoogleEmail(e.target.value)}
                   className="w-full text-xs px-3 py-2 border border-[#747775] rounded-lg outline-none focus:border-[#1a73e8]"
+                  required
                 />
               </div>
 
               <div>
                 <label className="text-[11px] font-bold text-[#444746] block mb-1">
-                  Google OAuth Client ID <span className="text-[#747775] font-normal">(Optional for custom API)</span>
+                  Password / Google App Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your Gmail password"
+                    value={googlePassword}
+                    onChange={(e) => setGooglePassword(e.target.value)}
+                    className="w-full text-xs px-3 py-2 border border-[#747775] rounded-lg outline-none focus:border-[#1a73e8] pr-9"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-2 text-[#747775] hover:text-[#1f1f1f] cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                <div className="mt-1.5 p-2 bg-[#f0f7ff] rounded-md border border-[#c2e7ff] text-[10px] text-[#004e8c] leading-relaxed">
+                  💡 <strong>Direct Sign-In Note:</strong> Enter your Gmail password or 16-character Google App Password (from myaccount.google.com/apppasswords). No Google OAuth or client ID required!
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-[#444746] block mb-1">
+                  Sender Display Name <span className="text-[#747775] font-normal">(Optional)</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="apps.googleusercontent.com"
-                  value={googleClientId}
-                  onChange={(e) => setGoogleClientId(e.target.value)}
+                  placeholder="e.g. Shiva Ganesh or Enterprise Lead"
+                  value={googleName}
+                  onChange={(e) => setGoogleName(e.target.value)}
                   className="w-full text-xs px-3 py-2 border border-[#747775] rounded-lg outline-none focus:border-[#1a73e8]"
                 />
               </div>
-            </div>
 
-            <div className="pt-2 flex gap-2">
-              <button
-                onClick={() => setShowSignInModal(false)}
-                className="flex-1 py-2 text-xs font-semibold text-[#444746] hover:bg-[#f1f3f4] rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConnectGoogle}
-                className="flex-1 py-2 text-xs font-bold bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-lg shadow-xs"
-              >
-                Authorize & Connect
-              </button>
-            </div>
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSignInModal(false)}
+                  className="flex-1 py-2 text-xs font-semibold text-[#444746] hover:bg-[#f1f3f4] rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 text-xs font-bold bg-[#ea4335] hover:bg-[#d93025] text-white rounded-lg shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Key size={13} />
+                  <span>Sign In Directly</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

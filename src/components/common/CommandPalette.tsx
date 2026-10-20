@@ -37,13 +37,13 @@ export function CommandPalette() {
     { id: 'document', label: 'Word', description: 'Create and edit documents', icon: <FileText size={18} className="text-[#185abd]" />, action: () => { setCurrentApp('document'); toggleSearch(); }, category: 'Applications' },
     { id: 'spreadsheet', label: 'Excel', description: 'Spreadsheets, formulas, calculations', icon: <Table2 size={18} className="text-[#107c41]" />, action: () => { setCurrentApp('spreadsheet'); toggleSearch(); }, category: 'Applications' },
     { id: 'presentation', label: 'PowerPoint', description: 'Slide deck presentation studio', icon: <Presentation size={18} className="text-[#c43e1c]" />, action: () => { setCurrentApp('presentation'); toggleSearch(); }, category: 'Applications' },
-    { id: 'email', label: 'Outlook', description: 'Check inbox & send messages', icon: <Mail size={18} className="text-[#0078d4]" />, action: () => { setCurrentApp('email'); toggleSearch(); }, category: 'Applications' },
+    { id: 'email', label: 'Gmail', description: 'Check inbox & send messages', icon: <Mail size={18} className="text-[#ea4335]" />, action: () => { setCurrentApp('email'); toggleSearch(); }, category: 'Applications' },
     { id: 'calendar', label: 'Calendar', description: 'Schedule events & meetings', icon: <Calendar size={18} className="text-[#0078d4]" />, action: () => { setCurrentApp('calendar'); toggleSearch(); }, category: 'Applications' },
     { id: 'notes', label: 'OneNote', description: 'Notebooks and quick pages', icon: <StickyNote size={18} className="text-[#7719aa]" />, action: () => { setCurrentApp('notes'); toggleSearch(); }, category: 'Applications' },
     { id: 'code', label: 'DevStudio', description: 'TypeScript/Python sandbox runner', icon: <Code2 size={18} className="text-[#008272]" />, action: () => { setCurrentApp('code-editor'); toggleSearch(); }, category: 'Applications' },
     { id: 'whiteboard', label: 'Whiteboard', description: 'Freeform vector drawing canvas', icon: <PenTool size={18} className="text-[#d83b01]" />, action: () => { setCurrentApp('whiteboard'); toggleSearch(); }, category: 'Applications' },
-    { id: 'ai', label: 'Microsoft Copilot', description: 'Autonomous assistant', icon: <Sparkles size={18} className="text-[#8a44f8]" />, action: () => { setCurrentApp('ai-chat'); toggleSearch(); }, category: 'Copilot AI' },
-    { id: 'copilot-panel', label: 'Toggle Copilot Sidekick', description: 'Open Copilot drawer', icon: <Sparkles size={18} className="text-[#8a44f8]" />, action: () => { toggleAIPanel(); toggleSearch(); }, category: 'Copilot AI' },
+    { id: 'ai', label: 'Yella AI Assistant', description: 'Autonomous intelligence & document creator', icon: <Sparkles size={18} className="text-[#8a44f8]" />, action: () => { setCurrentApp('ai-chat'); toggleSearch(); }, category: 'Yella AI' },
+    { id: 'copilot-panel', label: 'Toggle Yella AI Drawer', description: 'Open Yella AI side drawer', icon: <Sparkles size={18} className="text-[#8a44f8]" />, action: () => { toggleAIPanel(); toggleSearch(); }, category: 'Yella AI' },
     { id: 'settings', label: 'Settings', description: 'Manage privacy vault and models', icon: <Settings size={18} className="text-[#605e5c]" />, action: () => { setCurrentApp('settings'); toggleSearch(); }, category: 'Preferences' },
   ];
 
@@ -82,7 +82,7 @@ export function CommandPalette() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search apps, files, or ask Copilot (Alt + Q)..."
+            placeholder="Search apps, files, or ask Yella AI (Alt + Q)..."
             className="flex-1 bg-transparent outline-none text-xs text-[#201f1e]"
           />
           <button onClick={toggleSearch} className="text-[#8a8886] hover:text-[#201f1e]">

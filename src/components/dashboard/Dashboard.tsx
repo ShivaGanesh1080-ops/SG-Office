@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { OfficeLogo } from '../common/OfficeLogo';
 import {
   FileText,
   Table2,
@@ -58,13 +59,16 @@ export function Dashboard() {
       <div className="max-w-5xl mx-auto space-y-6">
         {/* 1. Header Greeting */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#201f1e] tracking-tight">
-              Good evening
-            </h1>
-            <p className="text-xs text-[#605e5c] mt-0.5">
-              Microsoft 365 Enterprise Workspace • Powered by Yella AI
-            </p>
+          <div className="flex items-center gap-3">
+            <OfficeLogo size={32} />
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-[#201f1e] tracking-tight">
+                Good evening
+              </h1>
+              <p className="text-xs text-[#605e5c] mt-0.5">
+                Microsoft 365 Enterprise Workspace • Powered by Yella AI
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

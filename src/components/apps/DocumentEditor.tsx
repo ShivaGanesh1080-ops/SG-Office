@@ -11,6 +11,7 @@ import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { useStore } from '../../store/useStore';
+import { OfficeLogo } from '../common/OfficeLogo';
 import {
   Bold,
   Italic,
@@ -275,7 +276,7 @@ export function DocumentEditor() {
     }
 
     try {
-      // First attempt native command
+      // First attempt native TipTap command
       const success = editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
       if (!success) throw new Error('Native command bypassed');
     } catch (e) {
@@ -291,7 +292,7 @@ export function DocumentEditor() {
         const rowBg = stylePreset === 'striped' && r % 2 === 1 ? '#f8f9fa' : '#ffffff';
         html += `<tr style="background:${rowBg};">`;
         for (let c = 0; c < cols; c++) {
-          html += `<td style="border:${rowBorder}; padding:8px 12px;">Row ${r + 1}, Col ${c + 1}</td>`;
+          html += `<td style="border:${rowBorder}; padding:8px 12px;">Cell ${r + 1}, ${c + 1}</td>`;
         }
         html += `</tr>`;
       }
@@ -348,36 +349,94 @@ export function DocumentEditor() {
     toast.success(`Inserted date: ${text}`);
   };
 
-  // Insert Pre-styled Shapes
+  // Vector Shape SVG Generator (Guaranteed 100% Crisp Vector Rendering in TipTap)
+  const generateShapeSVG = (shapeType: string) => {
+    switch (shapeType) {
+      case 'rect':
+      case 'process':
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="90" viewBox="0 0 560 90">
+          <defs>
+            <linearGradient id="bg_p" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#185abd"/>
+              <stop offset="100%" stop-color="#004e8c"/>
+            </linearGradient>
+          </defs>
+          <rect x="4" y="4" width="552" height="82" rx="8" fill="url(#bg_p)"/>
+          <text x="280" y="40" fill="#ffffff" font-family="Segoe UI, sans-serif" font-size="15" font-weight="700" text-anchor="middle">PROCESS STAGE 01: ARCHITECTURE &amp; EXECUTION</text>
+          <text x="280" y="64" fill="#d2e3fc" font-family="Segoe UI, sans-serif" font-size="12" text-anchor="middle">Workstream 1 • Status: Operational &amp; Production Verified</text>
+        </svg>`;
+      case 'arrow':
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="70" viewBox="0 0 560 70">
+          <defs>
+            <linearGradient id="bg_a" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#107c41"/>
+              <stop offset="100%" stop-color="#0b6a37"/>
+            </linearGradient>
+          </defs>
+          <path d="M 6 15 L 485 15 L 485 5 L 554 35 L 485 65 L 485 55 L 6 55 Z" fill="url(#bg_a)"/>
+          <text x="245" y="40" fill="#ffffff" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" text-anchor="middle">PIPELINE FLOW: INGESTION → VALIDATION → DEPLOYMENT</text>
+        </svg>`;
+      case 'callout':
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="96" viewBox="0 0 560 96">
+          <rect x="4" y="4" width="552" height="88" rx="8" fill="#f0f7ff" stroke="#c2e7ff" stroke-width="1.5"/>
+          <path d="M 4 12 A 8 8 0 0 1 12 4 L 16 4 L 16 92 L 12 92 A 8 8 0 0 1 4 84 Z" fill="#185abd"/>
+          <text x="32" y="32" fill="#004e8c" font-family="Segoe UI, sans-serif" font-size="14" font-weight="700">💡 STRATEGIC EXECUTIVE TAKEAWAY</text>
+          <text x="32" y="56" fill="#201f1e" font-family="Segoe UI, sans-serif" font-size="12">Direct multi-model orchestration eliminates single-point API limits and ensures uninterrupted workflow.</text>
+          <text x="32" y="76" fill="#605e5c" font-family="Segoe UI, sans-serif" font-size="11">Architecture validated across all document formats and high-concurrency environments.</text>
+        </svg>`;
+      case 'warning':
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="96" viewBox="0 0 560 96">
+          <rect x="4" y="4" width="552" height="88" rx="8" fill="#fff9e6" stroke="#fed9cc" stroke-width="1.5"/>
+          <path d="M 4 12 A 8 8 0 0 1 12 4 L 16 4 L 16 92 L 12 92 A 8 8 0 0 1 4 84 Z" fill="#d83b01"/>
+          <text x="32" y="32" fill="#a80000" font-family="Segoe UI, sans-serif" font-size="14" font-weight="700">⚠️ COMPLIANCE &amp; AUDIT CHECKPOINT</text>
+          <text x="32" y="56" fill="#201f1e" font-family="Segoe UI, sans-serif" font-size="12">Mandatory peer verification and multi-stage testing required prior to enterprise roll-out.</text>
+          <text x="32" y="76" fill="#605e5c" font-family="Segoe UI, sans-serif" font-size="11">Ensure zero unencrypted credentials or unauthorized telemetry in all release branches.</text>
+        </svg>`;
+      case 'success':
+      case 'milestone':
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="96" viewBox="0 0 560 96">
+          <rect x="4" y="4" width="552" height="88" rx="8" fill="#eafaf1" stroke="#b7eb8f" stroke-width="1.5"/>
+          <path d="M 4 12 A 8 8 0 0 1 12 4 L 16 4 L 16 92 L 12 92 A 8 8 0 0 1 4 84 Z" fill="#107c41"/>
+          <text x="32" y="32" fill="#0b6a37" font-family="Segoe UI, sans-serif" font-size="14" font-weight="700">✅ VERIFIED MILESTONE DELIVERABLE</text>
+          <text x="32" y="56" fill="#201f1e" font-family="Segoe UI, sans-serif" font-size="12">Target benchmarks passed: sub-second document compilation, 100% test coverage.</text>
+          <text x="32" y="76" fill="#605e5c" font-family="Segoe UI, sans-serif" font-size="11">Signed and verified by Enterprise Technical Committee.</text>
+        </svg>`;
+      case 'decision':
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="110" viewBox="0 0 560 110">
+          <polygon points="280,6 550,55 280,104 10,55" fill="#f5f0ff" stroke="#7928ca" stroke-width="2"/>
+          <text x="280" y="52" fill="#581c87" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" text-anchor="middle">DECISION GATE: APPROVAL &amp; MERGE THRESHOLD</text>
+          <text x="280" y="72" fill="#6b7280" font-family="Segoe UI, sans-serif" font-size="11" text-anchor="middle">YES: Proceed to Autonomous Deploy | NO: Re-route to Reviewer</text>
+        </svg>`;
+      case 'signature':
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="96" viewBox="0 0 400 96">
+          <line x1="10" y1="56" x2="390" y2="56" stroke="#323130" stroke-width="1.5" stroke-dasharray="4 2"/>
+          <text x="10" y="40" fill="#605e5c" font-family="Segoe UI, sans-serif" font-size="11" font-style="italic">Executive Authorization &amp; Sign-off:</text>
+          <text x="10" y="78" fill="#201f1e" font-family="Segoe UI, sans-serif" font-size="12" font-weight="700">Official Signatory / Title</text>
+          <text x="290" y="78" fill="#605e5c" font-family="Segoe UI, sans-serif" font-size="11">Date: ____/____/2026</text>
+        </svg>`;
+      case 'pill':
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="260" height="42" viewBox="0 0 260 42">
+          <rect x="2" y="2" width="256" height="38" rx="19" fill="#e0e7ff" stroke="#4f46e5" stroke-width="1.5"/>
+          <circle cx="20" cy="21" r="6" fill="#4f46e5"/>
+          <text x="36" y="26" fill="#312e81" font-family="Segoe UI, sans-serif" font-size="12" font-weight="700">STRATEGIC PRIORITY: TIER 1</text>
+        </svg>`;
+      default:
+        return '';
+    }
+  };
+
+  // Insert Pre-styled Vector Shapes (100% Reliable via TipTap Image & Blockquote)
   const insertShape = (shape: string) => {
     if (!editor) return;
-    let shapeHtml = '';
-    switch (shape) {
-      case 'rect':
-        shapeHtml = `<div style="background:#185abd; color:white; border-radius:6px; padding:12px 18px; margin:12px 0; font-weight:600; text-align:center;">🟦 Process Stage / Workstream Node</div>`;
-        break;
-      case 'callout':
-        shapeHtml = `<div style="background:#e8f0fe; border-left:4px solid #185abd; padding:12px 16px; border-radius:0 6px 6px 0; margin:12px 0;"><strong>💡 Key Takeaway:</strong> Add critical strategic note here.</div>`;
-        break;
-      case 'warning':
-        shapeHtml = `<div style="background:#fff4ce; border-left:4px solid #f59e0b; padding:12px 16px; border-radius:0 6px 6px 0; margin:12px 0;"><strong>⚠️ Compliance Notice:</strong> Verify regulatory audit parameters before sign-off.</div>`;
-        break;
-      case 'success':
-        shapeHtml = `<div style="background:#dff6dd; border-left:4px solid #107c41; padding:12px 16px; border-radius:0 6px 6px 0; margin:12px 0;"><strong>✅ Verified Milestone:</strong> Deliverable validated against production SLA.</div>`;
-        break;
-      case 'signature':
-        shapeHtml = `<div style="margin:24px 0; padding-top:16px; border-top:1px dashed #a19f9d; width:260px;">
-          <p style="margin:0; font-size:10pt;"><strong>Authorized Signature:</strong> __________________</p>
-          <p style="margin:4px 0 0 0; font-size:9pt; color:#605e5c;">Title / Executive Authority | Date</p>
-        </div>`;
-        break;
-      case 'task':
-        shapeHtml = `<p>☑️ <strong>Action Item:</strong> Complete quarterly operational review</p>`;
-        break;
+    const svg = generateShapeSVG(shape);
+    if (svg) {
+      const dataUri = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+      editor.chain().focus().setImage({ src: dataUri, alt: shape }).run();
+    } else {
+      editor.chain().focus().insertContent(`<p>🔘 <strong>Shape:</strong> ${shape}</p>`).run();
     }
-    editor.chain().focus().insertContent(shapeHtml).run();
     setShowShapeMenu(false);
-    toast.success('Inserted shape');
+    toast.success('Inserted vector shape into document');
   };
 
   // Dynamic Table of Contents builder
@@ -580,6 +639,7 @@ export function DocumentEditor() {
       <div className="flex items-center justify-between px-3 h-10 bg-[#185abd] text-white border-b border-[#106ebe] flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <div className="flex items-center gap-1.5 font-bold text-sm tracking-wide">
+            <OfficeLogo size={20} className="mr-0.5" />
             <div className="w-5 h-5 rounded bg-white text-[#185abd] flex items-center justify-center font-black text-xs shadow-xs">
               W
             </div>
@@ -766,127 +826,80 @@ export function DocumentEditor() {
         {/* INSERT TAB */}
         {activeRibbonTab === 'insert' && (
           <div className="flex items-center gap-2">
-            {/* Table Dropdown with Complete Controls */}
-            <div className="relative">
+            {/* Table Studio & Quick Actions */}
+            <div className="flex items-center gap-1 border-r border-[#edebe9] pr-2">
               <button
-                onClick={() => setShowTablePicker(!showTablePicker)}
-                className="flex items-center gap-1.5 px-2.5 py-1 bg-[#185abd] text-white hover:bg-[#106ebe] rounded text-xs font-bold shadow-2xs"
+                onClick={() => setShowTablePicker(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-[#185abd] text-white hover:bg-[#106ebe] rounded text-xs font-bold shadow-2xs cursor-pointer"
+                title="Open Complete Table Studio"
               >
                 <TableIcon size={14} />
-                <span>Table</span>
-                <ChevronDown size={12} />
+                <span>Table Studio</span>
               </button>
-
-              {showTablePicker && (
-                <div className="absolute top-full left-0 mt-1 bg-white p-3 rounded-lg shadow-2xl border border-[#d2d0ce] z-50 w-72 space-y-3">
-                  <div className="flex items-center justify-between pb-1 border-b border-[#edebe9]">
-                    <span className="text-xs font-bold text-[#201f1e]">
-                      Grid: {tableGridHover.r} × {tableGridHover.c} Table
-                    </span>
-                    <button
-                      onClick={() => { setShowCustomTableModal(true); setShowTablePicker(false); }}
-                      className="text-[10px] text-[#185abd] hover:underline"
-                    >
-                      Custom Size...
-                    </button>
-                  </div>
-
-                  {/* 8x8 Interactive Grid */}
-                  <div className="grid grid-cols-8 gap-1 p-1.5 bg-[#faf9f8] border border-[#edebe9] rounded">
-                    {Array.from({ length: 8 }).map((_, rIdx) =>
-                      Array.from({ length: 8 }).map((_, cIdx) => (
-                        <div
-                          key={`${rIdx}-${cIdx}`}
-                          onMouseEnter={() => setTableGridHover({ r: rIdx + 1, c: cIdx + 1 })}
-                          onClick={() => insertRobustTable(rIdx + 1, cIdx + 1, 'corporate')}
-                          className={`w-3.5 h-3.5 border cursor-pointer rounded-xs transition-colors ${
-                            rIdx < tableGridHover.r && cIdx < tableGridHover.c
-                              ? 'bg-[#185abd] border-[#106ebe]'
-                              : 'bg-white border-[#d2d0ce]'
-                          }`}
-                        />
-                      ))
-                    )}
-                  </div>
-
-                  {/* Table Style Presets */}
-                  <div>
-                    <p className="text-[10px] font-bold text-[#605e5c] mb-1">Select Preset Theme:</p>
-                    <div className="grid grid-cols-3 gap-1">
-                      <button onClick={() => insertRobustTable(3, 4, 'corporate')} className="px-2 py-1 bg-[#185abd] text-white text-[10px] font-semibold rounded hover:opacity-90">Corporate</button>
-                      <button onClick={() => insertRobustTable(3, 4, 'emerald')} className="px-2 py-1 bg-[#107c41] text-white text-[10px] font-semibold rounded hover:opacity-90">Emerald</button>
-                      <button onClick={() => insertRobustTable(3, 4, 'slate')} className="px-2 py-1 bg-[#323130] text-white text-[10px] font-semibold rounded hover:opacity-90">Slate</button>
-                      <button onClick={() => insertRobustTable(4, 4, 'striped')} className="px-2 py-1 bg-gray-100 text-[#201f1e] border border-gray-300 text-[10px] font-semibold rounded hover:bg-gray-200">Striped Zebra</button>
-                      <button onClick={() => insertRobustTable(3, 3, 'minimal')} className="px-2 py-1 bg-white text-[#201f1e] border border-[#d2d0ce] text-[10px] font-semibold rounded hover:bg-gray-50">Minimal Plain</button>
-                    </div>
-                  </div>
-
-                  {/* Active Table Manipulation Tools */}
-                  <div className="pt-2 border-t border-[#edebe9] space-y-1">
-                    <p className="text-[10px] font-bold text-[#605e5c]">Table Actions:</p>
-                    <div className="grid grid-cols-2 gap-1 text-[11px]">
-                      <button onClick={() => editor.chain().focus().addRowBefore().run()} className="px-2 py-1 rounded bg-[#f3f2f1] hover:bg-[#edebe9] text-left">+ Row Above</button>
-                      <button onClick={() => editor.chain().focus().addRowAfter().run()} className="px-2 py-1 rounded bg-[#f3f2f1] hover:bg-[#edebe9] text-left">+ Row Below</button>
-                      <button onClick={() => editor.chain().focus().addColumnBefore().run()} className="px-2 py-1 rounded bg-[#f3f2f1] hover:bg-[#edebe9] text-left">+ Col Left</button>
-                      <button onClick={() => editor.chain().focus().addColumnAfter().run()} className="px-2 py-1 rounded bg-[#f3f2f1] hover:bg-[#edebe9] text-left">+ Col Right</button>
-                      <button onClick={() => editor.chain().focus().deleteRow().run()} className="px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 text-left">Delete Row</button>
-                      <button onClick={() => editor.chain().focus().deleteColumn().run()} className="px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 text-left">Delete Col</button>
-                      <button onClick={() => editor.chain().focus().deleteTable().run()} className="col-span-2 px-2 py-1 rounded bg-red-100 text-red-700 font-bold hover:bg-red-200 text-center">Delete Entire Table</button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => insertRobustTable(3, 3, 'corporate')}
+                className="px-2 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] text-[#185abd] rounded text-xs font-semibold cursor-pointer"
+                title="Instant 3×3 Grid"
+              >
+                + 3×3 Table
+              </button>
             </div>
 
             {/* Pictures */}
             <div className="flex items-center gap-1 border-r border-[#edebe9] pr-2">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-semibold"
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-semibold cursor-pointer"
               >
                 <ImageIcon size={14} className="text-[#107c41]" />
                 <span>Upload Picture</span>
               </button>
               <button
                 onClick={handleInsertStockImage}
-                className="flex items-center gap-1 px-2 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs text-[#605e5c]"
+                className="flex items-center gap-1 px-2 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs text-[#605e5c] cursor-pointer"
               >
                 Stock Photo
               </button>
             </div>
 
-            {/* Shapes */}
-            <div className="relative">
+            {/* Shapes Studio & Direct Shape Inserts */}
+            <div className="flex items-center gap-1 border-r border-[#edebe9] pr-2">
               <button
-                onClick={() => setShowShapeMenu(!showShapeMenu)}
-                className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-semibold"
+                onClick={() => setShowShapeMenu(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-semibold text-[#f59e0b] cursor-pointer"
+                title="Open Shape Gallery Modal"
               >
-                <Square size={14} className="text-[#f59e0b]" />
-                <span>Shapes</span>
-                <ChevronDown size={12} />
+                <Square size={14} />
+                <span className="text-[#201f1e] font-semibold">Shapes Studio</span>
               </button>
-              {showShapeMenu && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-white p-2 rounded-lg shadow-xl border border-[#edebe9] z-50 text-xs space-y-1">
-                  <button onClick={() => insertShape('rect')} className="w-full text-left px-2 py-1 hover:bg-[#f3f2f1] rounded flex items-center gap-2">
-                    <Square size={13} className="text-blue-600" /> Process Stage
-                  </button>
-                  <button onClick={() => insertShape('callout')} className="w-full text-left px-2 py-1 hover:bg-[#f3f2f1] rounded flex items-center gap-2">
-                    <Bookmark size={13} className="text-indigo-600" /> Key Takeaway
-                  </button>
-                  <button onClick={() => insertShape('warning')} className="w-full text-left px-2 py-1 hover:bg-[#f3f2f1] rounded flex items-center gap-2 text-amber-700">
-                    <HelpCircle size={13} className="text-amber-600" /> Compliance Note
-                  </button>
-                  <button onClick={() => insertShape('success')} className="w-full text-left px-2 py-1 hover:bg-[#f3f2f1] rounded flex items-center gap-2 text-emerald-700">
-                    <CheckCircle size={13} className="text-emerald-600" /> Verified Milestone
-                  </button>
-                  <button onClick={() => insertShape('signature')} className="w-full text-left px-2 py-1 hover:bg-[#f3f2f1] rounded flex items-center gap-2">
-                    <PenTool size={13} className="text-gray-600" /> Signature Line
-                  </button>
-                  <button onClick={() => insertShape('task')} className="w-full text-left px-2 py-1 hover:bg-[#f3f2f1] rounded flex items-center gap-2">
-                    <CheckSquare size={13} className="text-purple-600" /> Action Checkbox
-                  </button>
-                </div>
-              )}
+              <button
+                onClick={() => insertShape('callout')}
+                className="px-2 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] text-[#185abd] rounded text-xs font-medium cursor-pointer"
+                title="Insert Executive Callout"
+              >
+                💡 Callout
+              </button>
+              <button
+                onClick={() => insertShape('process')}
+                className="px-2 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] text-blue-700 rounded text-xs font-medium cursor-pointer"
+                title="Insert Process Box"
+              >
+                🟦 Process
+              </button>
+              <button
+                onClick={() => insertShape('milestone')}
+                className="px-2 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] text-emerald-700 rounded text-xs font-medium cursor-pointer"
+                title="Insert Milestone"
+              >
+                ✅ Milestone
+              </button>
+              <button
+                onClick={() => insertShape('signature')}
+                className="px-2 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] text-gray-700 rounded text-xs font-medium cursor-pointer"
+                title="Insert Signature Line"
+              >
+                ✍ Signature
+              </button>
             </div>
 
             {/* Icons & Symbols */}
@@ -1185,7 +1198,291 @@ export function DocumentEditor() {
         </div>
       </div>
 
-      {/* MODAL 1: Custom Table Size Modal */}
+      {/* MODAL 1: Table Creation Studio (Unclipped Modal) */}
+      {showTablePicker && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-2xs flex items-center justify-center p-4 z-50">
+          <div className="w-[440px] bg-white rounded-xl shadow-2xl border border-[#edebe9] p-5 space-y-4 animate-fade-in text-[#201f1e]">
+            <div className="flex items-center justify-between border-b border-[#edebe9] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#185abd] text-white flex items-center justify-center">
+                  <TableIcon size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#201f1e]">Table Studio</h3>
+                  <p className="text-[11px] text-[#605e5c]">Insert responsive, styled tables with custom dimensions</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowTablePicker(false)}
+                className="text-gray-400 hover:text-black p-1 rounded hover:bg-gray-100 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Interactive 8x8 Grid */}
+            <div className="p-3 bg-[#f8f9fa] rounded-lg border border-[#edebe9] space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span>Select Grid Dimensions:</span>
+                <span className="font-bold text-[#185abd] px-2 py-0.5 bg-blue-50 rounded">
+                  {tableGridHover.r} Rows × {tableGridHover.c} Columns
+                </span>
+              </div>
+              <div className="grid grid-cols-8 gap-1.5 p-2 bg-white rounded border border-[#d2d0ce] justify-items-center">
+                {Array.from({ length: 8 }).map((_, rIdx) =>
+                  Array.from({ length: 8 }).map((_, cIdx) => (
+                    <div
+                      key={`${rIdx}-${cIdx}`}
+                      onMouseEnter={() => setTableGridHover({ r: rIdx + 1, c: cIdx + 1 })}
+                      onClick={() => insertRobustTable(rIdx + 1, cIdx + 1, 'corporate')}
+                      className={`w-5 h-5 border cursor-pointer rounded-xs transition-all ${
+                        rIdx < tableGridHover.r && cIdx < tableGridHover.c
+                          ? 'bg-[#185abd] border-[#106ebe] scale-105'
+                          : 'bg-[#faf9f8] border-[#e1dfdd] hover:border-[#185abd]'
+                      }`}
+                    />
+                  ))
+                )}
+              </div>
+              <p className="text-[10px] text-[#605e5c] text-center">Click any square above to insert instantly</p>
+            </div>
+
+            {/* Quick Presets */}
+            <div>
+              <p className="text-xs font-bold text-[#605e5c] mb-1.5">Quick Presets:</p>
+              <div className="grid grid-cols-4 gap-1.5 text-xs">
+                <button
+                  onClick={() => insertRobustTable(2, 2, 'corporate')}
+                  className="py-1.5 px-2 bg-[#f3f2f1] hover:bg-[#185abd] hover:text-white rounded font-medium transition-colors cursor-pointer text-center"
+                >
+                  2×2 Matrix
+                </button>
+                <button
+                  onClick={() => insertRobustTable(3, 3, 'corporate')}
+                  className="py-1.5 px-2 bg-[#f3f2f1] hover:bg-[#185abd] hover:text-white rounded font-medium transition-colors cursor-pointer text-center"
+                >
+                  3×3 Grid
+                </button>
+                <button
+                  onClick={() => insertRobustTable(4, 4, 'corporate')}
+                  className="py-1.5 px-2 bg-[#f3f2f1] hover:bg-[#185abd] hover:text-white rounded font-medium transition-colors cursor-pointer text-center"
+                >
+                  4×4 Board
+                </button>
+                <button
+                  onClick={() => insertRobustTable(5, 3, 'striped')}
+                  className="py-1.5 px-2 bg-[#f3f2f1] hover:bg-[#185abd] hover:text-white rounded font-medium transition-colors cursor-pointer text-center"
+                >
+                  5×3 Report
+                </button>
+              </div>
+            </div>
+
+            {/* Custom Rows & Cols Input */}
+            <div className="p-3 bg-[#faf9f8] rounded-lg border border-[#edebe9] space-y-2">
+              <p className="text-xs font-bold text-[#605e5c]">Custom Size:</p>
+              <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-1.5 flex-1">
+                  <span>Columns:</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={customTableCols}
+                    onChange={(e) => setCustomTableCols(parseInt(e.target.value) || 1)}
+                    className="w-14 px-2 py-1 border border-[#d2d0ce] rounded text-center bg-white"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 flex-1">
+                  <span>Rows:</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={customTableRows}
+                    onChange={(e) => setCustomTableRows(parseInt(e.target.value) || 1)}
+                    className="w-14 px-2 py-1 border border-[#d2d0ce] rounded text-center bg-white"
+                  />
+                </div>
+                <button
+                  onClick={() => insertRobustTable(customTableRows, customTableCols, 'corporate')}
+                  className="px-3 py-1 bg-[#185abd] hover:bg-[#106ebe] text-white font-bold rounded text-xs cursor-pointer shadow-xs"
+                >
+                  Insert
+                </button>
+              </div>
+            </div>
+
+            {/* Table Manipulation Tools */}
+            <div className="pt-2 border-t border-[#edebe9] space-y-1.5">
+              <p className="text-[11px] font-bold text-[#605e5c]">Modify Existing Table In Document:</p>
+              <div className="grid grid-cols-4 gap-1 text-[11px]">
+                <button
+                  onClick={() => { editor.chain().focus().addRowBefore().run(); setShowTablePicker(false); }}
+                  className="p-1 rounded bg-[#f3f2f1] hover:bg-[#edebe9] text-center"
+                >
+                  + Row Above
+                </button>
+                <button
+                  onClick={() => { editor.chain().focus().addRowAfter().run(); setShowTablePicker(false); }}
+                  className="p-1 rounded bg-[#f3f2f1] hover:bg-[#edebe9] text-center"
+                >
+                  + Row Below
+                </button>
+                <button
+                  onClick={() => { editor.chain().focus().addColumnBefore().run(); setShowTablePicker(false); }}
+                  className="p-1 rounded bg-[#f3f2f1] hover:bg-[#edebe9] text-center"
+                >
+                  + Col Left
+                </button>
+                <button
+                  onClick={() => { editor.chain().focus().addColumnAfter().run(); setShowTablePicker(false); }}
+                  className="p-1 rounded bg-[#f3f2f1] hover:bg-[#edebe9] text-center"
+                >
+                  + Col Right
+                </button>
+                <button
+                  onClick={() => { editor.chain().focus().deleteRow().run(); setShowTablePicker(false); }}
+                  className="p-1 rounded bg-red-50 text-red-600 hover:bg-red-100 text-center"
+                >
+                  Delete Row
+                </button>
+                <button
+                  onClick={() => { editor.chain().focus().deleteColumn().run(); setShowTablePicker(false); }}
+                  className="p-1 rounded bg-red-50 text-red-600 hover:bg-red-100 text-center"
+                >
+                  Delete Col
+                </button>
+                <button
+                  onClick={() => { editor.chain().focus().deleteTable().run(); setShowTablePicker(false); }}
+                  className="col-span-2 p-1 rounded bg-red-100 text-red-700 font-bold hover:bg-red-200 text-center"
+                >
+                  Delete Table
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 1B: Shapes & Diagram Studio (Unclipped Modal) */}
+      {showShapeMenu && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-2xs flex items-center justify-center p-4 z-50">
+          <div className="w-[580px] bg-white rounded-xl shadow-2xl border border-[#edebe9] p-5 space-y-4 animate-fade-in text-[#201f1e]">
+            <div className="flex items-center justify-between border-b border-[#edebe9] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#f59e0b] text-white flex items-center justify-center">
+                  <Square size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#201f1e]">Shapes &amp; Diagram Studio</h3>
+                  <p className="text-[11px] text-[#605e5c]">Click any vector component to embed directly into your Word document</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowShapeMenu(false)}
+                className="text-gray-400 hover:text-black p-1 rounded hover:bg-gray-100 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 max-h-[440px] overflow-y-auto p-1">
+              {[
+                {
+                  id: 'process',
+                  title: 'Process Stage Box',
+                  desc: 'High-visibility corporate stage block with header & subtitle',
+                  badge: 'Blue Vector',
+                  color: '#185abd',
+                },
+                {
+                  id: 'arrow',
+                  title: 'Workflow Direction Arrow',
+                  desc: 'Flow pipeline indicator connecting strategic workstreams',
+                  badge: 'Green Vector',
+                  color: '#107c41',
+                },
+                {
+                  id: 'callout',
+                  title: 'Executive Callout Card',
+                  desc: 'Accent-bordered card highlighting strategic takeaways',
+                  badge: 'Callout',
+                  color: '#0078d4',
+                },
+                {
+                  id: 'warning',
+                  title: 'Compliance & Audit Alert',
+                  desc: 'Regulatory checkpoint card with security warning border',
+                  badge: 'Notice',
+                  color: '#d83b01',
+                },
+                {
+                  id: 'milestone',
+                  title: 'Verified Milestone Deliverable',
+                  desc: 'Approved production milestone card with verification seal',
+                  badge: 'Success',
+                  color: '#107c41',
+                },
+                {
+                  id: 'decision',
+                  title: 'Decision Gate Diamond',
+                  desc: 'Flowchart decision node for branch condition modeling',
+                  badge: 'Diamond',
+                  color: '#7928ca',
+                },
+                {
+                  id: 'signature',
+                  title: 'Authorized Signature Block',
+                  desc: 'Formal signature line with date stamp and executive title',
+                  badge: 'Legal',
+                  color: '#323130',
+                },
+                {
+                  id: 'pill',
+                  title: 'Strategic Priority Pill',
+                  desc: 'High-impact rounded badge for project tier classification',
+                  badge: 'Badge',
+                  color: '#4f46e5',
+                },
+              ].map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => insertShape(item.id)}
+                  className="p-3 rounded-lg border border-[#edebe9] hover:border-[#185abd] hover:shadow-md transition-all cursor-pointer bg-[#faf9f8] hover:bg-white flex flex-col justify-between group"
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-[#201f1e] group-hover:text-[#185abd]">{item.title}</span>
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
+                      style={{ background: item.color }}
+                    >
+                      {item.badge}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#605e5c] leading-relaxed mb-3">{item.desc}</p>
+                  <div className="flex justify-end">
+                    <span className="text-[11px] font-bold text-[#185abd] group-hover:underline flex items-center gap-1">
+                      Insert Into Document →
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-[#edebe9]">
+              <button
+                onClick={() => setShowShapeMenu(false)}
+                className="px-4 py-1.5 text-xs font-semibold text-[#605e5c] hover:bg-[#f1f3f4] rounded-lg cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 1C: Custom Table Size Modal */}
       {showCustomTableModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-2xs flex items-center justify-center p-4 z-50">
           <div className="w-80 bg-white rounded-lg shadow-2xl border border-[#edebe9] p-4 space-y-4">
