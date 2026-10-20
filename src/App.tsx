@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopBar } from './components/layout/TopBar';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { DocumentEditor } from './components/apps/DocumentEditor';
 import { SpreadsheetApp } from './components/apps/SpreadsheetApp';
 import { PresentationApp } from './components/apps/PresentationApp';
-import { EmailApp } from './components/apps/EmailApp';
+import { GmailApp } from './components/apps/GmailApp';
 import { CalendarApp } from './components/apps/CalendarApp';
 import { NotesApp } from './components/apps/NotesApp';
 import { CodeEditorApp } from './components/apps/CodeEditorApp';
@@ -29,7 +28,7 @@ function App() {
       case 'presentation':
         return <PresentationApp />;
       case 'email':
-        return <EmailApp />;
+        return <GmailApp />;
       case 'calendar':
         return <CalendarApp />;
       case 'notes':
@@ -48,11 +47,11 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden" style={{ background: 'var(--nova-bg)' }}>
+    <div className="flex h-screen w-screen overflow-hidden bg-[#f3f2f1] text-[#201f1e]">
       <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <TopBar />
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden min-w-0">
           {renderApp()}
         </main>
       </div>
@@ -62,10 +61,12 @@ function App() {
         position="bottom-right"
         toastOptions={{
           style: {
-            background: 'var(--nova-surface)',
-            color: 'var(--nova-text)',
-            border: '1px solid var(--nova-border)',
-            borderRadius: '12px',
+            background: '#ffffff',
+            color: '#201f1e',
+            border: '1px solid #edebe9',
+            borderRadius: '8px',
+            fontSize: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           },
         }}
       />

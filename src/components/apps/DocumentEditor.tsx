@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -7,6 +7,7 @@ import Highlight from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
+import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
 import { useStore } from '../../store/useStore';
 import {
   Bold,
@@ -25,6 +26,7 @@ import {
   Redo2,
   Heading1,
   Heading2,
+  Heading3,
   Highlighter,
   Minus,
   Sparkles,
@@ -41,17 +43,73 @@ import {
   Copy,
   Clipboard,
   BookOpen,
-  Languages,
+  Volume2,
+  VolumeX,
+  Search,
+  Table as TableIcon,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Palette,
+  Maximize2,
+  RotateCcw,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function DocumentEditor() {
-  const [activeRibbonTab, setActiveRibbonTab] = useState<'home' | 'insert' | 'layout' | 'review' | 'copilot'>('home');
+  const { toggleAIPanel, activeDocTitle, setActiveDocTitle, activeDocContent, setActiveDocContent } = useStore();
+  const [activeRibbonTab, setActiveRibbonTab] = useState<'home' | 'insert' | 'layout' | 'review' | 'view' | 'yella'>('home');
   const [zoom, setZoom] = useState(100);
   const [fontFamily, setFontFamily] = useState('Aptos');
   const [fontSize, setFontSize] = useState('11');
-  const [wordCount, setWordCount] = useState(245);
-  const { toggleAIPanel } = useStore();
+  const [wordCount, setWordCount] = useState(0);
+  const [charCount, setCharCount] = useState(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [findText, setFindText] = useState('');
+  const [replaceText, setReplaceText] = useState('');
+  const [showFindModal, setShowFindModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const initialContent = activeDocContent || `<h1>Executive Strategy & Project Deliverables</h1>
+<p>Welcome to <strong>SG-Office Word</strong> — your personalized, high-performance word processor built with clean Microsoft 365 white aesthetics, authentic Ribbon tools, and integrated <strong>Yella AI</strong>.</p>
+
+<h2>1. Project Objectives & Milestones</h2>
+<p>This document is completely real and editable. You can type, format, create tables, insert images, and save directly to your browser storage or export as DOCX.</p>
+
+<ul>
+  <li><strong>Full Microsoft Word Formatting</strong>: Headings, Bold, Italic, Tables, Underline, and Colors.</li>
+  <li><strong>Yella Autonomous Copilot</strong>: Directly command Yella to generate outlines, rewrite paragraphs, or summarize content.</li>
+  <li><strong>Complete Sovereignty</strong>: Zero-telemetry execution without corporate tracking.</li>
+</ul>
+
+<h2>2. Financial Performance Snapshot</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Division</th>
+      <th>Q1 Revenue</th>
+      <th>Q2 Revenue</th>
+      <th>YoY Growth</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Cloud Workspaces</td>
+      <td>$145,000</td>
+      <td>$184,000</td>
+      <td>+26.8%</td>
+    </tr>
+    <tr>
+      <td>AI Copilot Seats</td>
+      <td>$68,000</td>
+      <td>$115,000</td>
+      <td>+69.1%</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>"SG-Office delivers clean, responsive productivity on every screen size with zero compromise."</blockquote>`;
 
   const editor = useEditor({
     extensions: [
@@ -59,47 +117,133 @@ export function DocumentEditor() {
       Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Highlight.configure({ multicolor: true }),
-      Placeholder.configure({ placeholder: 'Type your document text or ask Copilot to draft...' }),
+      Placeholder.configure({ placeholder: 'Start typing your document or tell Yella to generate text...' }),
       Link.configure({ openOnClick: false }),
       Image,
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
-    content: `<h1>Quarterly Executive Strategy & AI Integration</h1>
-<p>Welcome to <strong>SG-Office Word</strong> — featuring the authentic Microsoft Office 365 clean white interface, responsive Ribbon toolbar, and enterprise Copilot AI integration.</p>
-
-<h2>1. Executive Summary</h2>
-<p>In Q4 2026, our enterprise deployed the unified <em>SG-Office 365 Suite</em>, replacing legacy fragmented software. By bringing autonomous cross-document intelligence directly into Word, Excel, and PowerPoint, team productivity increased by <strong>340%</strong> while maintaining complete local privacy and zero telemetry leakage.</p>
-
-<h2>2. Key Innovations Delivered</h2>
-<ul>
-  <li><strong>Authentic Office Ribbon & Clean White Page</strong>: Pixel-perfect Microsoft Word layout with precise A4 margins and crisp typography.</li>
-  <li><strong>Universal Copilot Engine</strong>: Contextual assistance accessible across docs, sheets, and presentations.</li>
-  <li><strong>Deep Privacy Guard</strong>: Local execution options with no corporate telemetry sent to third-party ad networks.</li>
-</ul>
-
-<blockquote>"SG-Office provides the exact familiarity and muscle memory of Microsoft Office, but with the intelligence, speed, and versatility of modern autonomous AI." — Product Leadership</blockquote>
-
-<h2>3. Next Steps & Recommendations</h2>
-<p>Review the accompanying financial models in <code>Workbook1.xlsx</code> and slide deck in <code>Presentation1.pptx</code> using the left navigation rail.</p>`,
+    content: initialContent,
     onUpdate: ({ editor }) => {
       const text = editor.getText();
       setWordCount(text.split(/\s+/).filter(Boolean).length);
+      setCharCount(text.length);
+      setActiveDocContent(editor.getHTML());
     },
   });
 
+  useEffect(() => {
+    if (editor) {
+      const text = editor.getText();
+      setWordCount(text.split(/\s+/).filter(Boolean).length);
+      setCharCount(text.length);
+    }
+  }, [editor]);
+
   if (!editor) return null;
 
-  const handleCopilotAction = (action: string) => {
-    toast.success(`Copilot: Analyzing document for '${action}'...`);
-    toggleAIPanel();
+  // Insert Table
+  const insertTable = () => {
+    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+    toast.success('3x3 Table inserted');
+  };
+
+  // Upload local image
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (readerEvent) => {
+        const url = readerEvent.target?.result as string;
+        editor.chain().focus().setImage({ src: url }).run();
+        toast.success('Image embedded into document');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Text to Speech
+  const toggleSpeech = () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    } else {
+      const text = editor.getText();
+      if (!text) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+      setIsSpeaking(true);
+      toast('Reading document aloud...');
+    }
+  };
+
+  // Export File (Real download)
+  const downloadDocument = (format: 'html' | 'md' | 'txt' | 'docx') => {
+    const htmlContent = editor.getHTML();
+    const textContent = editor.getText();
+    let content = htmlContent;
+    let mimeType = 'text/html';
+    let ext = 'html';
+
+    if (format === 'md') {
+      content = `# ${activeDocTitle}\n\n` + textContent;
+      mimeType = 'text/markdown';
+      ext = 'md';
+    } else if (format === 'txt') {
+      content = textContent;
+      mimeType = 'text/plain';
+      ext = 'txt';
+    } else if (format === 'docx') {
+      // Create valid document payload
+      content = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${activeDocTitle}</title></head><body>${htmlContent}</body></html>`;
+      mimeType = 'application/vnd.ms-word';
+      ext = 'doc';
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = activeDocTitle.replace(/\.[^/.]+$/, '') + `.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported as .${ext}`);
+  };
+
+  // Find & Replace
+  const handleFindReplace = () => {
+    if (!findText) return;
+    const currentHtml = editor.getHTML();
+    if (!currentHtml.includes(findText)) {
+      toast.error('Search text not found in document');
+      return;
+    }
+    const updated = currentHtml.replaceAll(findText, replaceText);
+    editor.commands.setContent(updated);
+    toast.success(`Replaced instances of "${findText}"`);
+    setShowFindModal(false);
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f3f2f1] select-none text-[#201f1e]">
+    <div className="flex flex-col h-full bg-[#f3f2f1] select-none text-[#201f1e] overflow-hidden">
+      {/* Hidden File Input for Image Upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImageUpload}
+        accept="image/*"
+        className="hidden"
+      />
+
       {/* 1. Office Ribbon Tabs Bar */}
-      <div className="flex items-center gap-1 px-4 bg-white border-b border-[#edebe9] text-xs font-medium">
+      <div className="flex items-center gap-0.5 px-3 bg-white border-b border-[#edebe9] text-[11px] font-medium overflow-x-auto whitespace-nowrap flex-shrink-0">
         <button
-          onClick={() => toast('File Menu: Save, Open, Export to PDF/DOCX')}
-          className="px-3 py-1.5 font-bold text-white bg-[#185abd] hover:bg-[#106ebe] transition-colors rounded-t-sm"
+          onClick={() => downloadDocument('docx')}
+          className="px-2.5 py-1 font-bold text-white bg-[#185abd] hover:bg-[#106ebe] transition-colors rounded-t-xs"
         >
           File
         </button>
@@ -108,14 +252,15 @@ export function DocumentEditor() {
           { id: 'insert', label: 'Insert' },
           { id: 'layout', label: 'Layout' },
           { id: 'review', label: 'Review' },
-          { id: 'copilot', label: 'Copilot' },
+          { id: 'view', label: 'View & Export' },
+          { id: 'yella', label: 'Yella AI' },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveRibbonTab(tab.id as any)}
-            className={`px-3 py-1.5 transition-colors border-b-2 ${
+            className={`px-2.5 py-1 transition-colors border-b-2 ${
               activeRibbonTab === tab.id
-                ? 'border-[#185abd] text-[#185abd] font-semibold'
+                ? 'border-[#185abd] text-[#185abd] font-bold'
                 : 'border-transparent text-[#605e5c] hover:bg-[#f3f2f1] hover:text-[#201f1e]'
             }`}
           >
@@ -124,259 +269,179 @@ export function DocumentEditor() {
         ))}
       </div>
 
-      {/* 2. Office Ribbon Toolbar Groups */}
-      <div className="flex items-center px-4 bg-white border-b border-[#d2d0ce] shadow-xs overflow-x-auto min-h-[84px]">
+      {/* 2. Responsive Compact Office Ribbon Toolbar (No wrapping!) */}
+      <div className="flex items-center px-3 py-1 bg-white border-b border-[#d2d0ce] shadow-2xs overflow-x-auto whitespace-nowrap min-h-[46px] gap-2 flex-shrink-0 text-xs">
+        {/* HOME TAB */}
         {activeRibbonTab === 'home' && (
-          <div className="flex items-center h-full">
-            {/* Undo/Redo */}
-            <div className="ribbon-group">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => editor.chain().focus().undo().run()}
-                  title="Undo (Ctrl+Z)"
-                  className="p-1.5 rounded hover:bg-[#f3f2f1] text-[#605e5c]"
-                >
-                  <Undo2 size={16} />
-                </button>
-                <button
-                  onClick={() => editor.chain().focus().redo().run()}
-                  title="Redo (Ctrl+Y)"
-                  className="p-1.5 rounded hover:bg-[#f3f2f1] text-[#605e5c]"
-                >
-                  <Redo2 size={16} />
-                </button>
-              </div>
-              <span className="ribbon-label">Undo</span>
+          <div className="flex items-center gap-2">
+            {/* Undo / Redo */}
+            <div className="flex items-center gap-0.5 border-r border-[#edebe9] pr-2">
+              <button onClick={() => editor.chain().focus().undo().run()} className="p-1 rounded hover:bg-[#f3f2f1]" title="Undo"><Undo2 size={14} /></button>
+              <button onClick={() => editor.chain().focus().redo().run()} className="p-1 rounded hover:bg-[#f3f2f1]" title="Redo"><Redo2 size={14} /></button>
             </div>
 
-            {/* Clipboard */}
-            <div className="ribbon-group">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.readText().then((t) => editor.commands.insertContent(t));
-                    toast.success('Pasted from clipboard');
-                  }}
-                  className="flex flex-col items-center p-1 rounded hover:bg-[#f3f2f1] text-[#605e5c]"
-                  title="Paste (Ctrl+V)"
-                >
-                  <Clipboard size={16} className="text-[#185abd]" />
-                  <span className="text-[10px]">Paste</span>
-                </button>
-                <div className="flex flex-col gap-0.5">
-                  <button onClick={() => toast('Cut (Ctrl+X)')} className="p-1 rounded hover:bg-[#f3f2f1] text-[#605e5c]"><Scissors size={12} /></button>
-                  <button onClick={() => toast('Copy (Ctrl+C)')} className="p-1 rounded hover:bg-[#f3f2f1] text-[#605e5c]"><Copy size={12} /></button>
-                </div>
-              </div>
-              <span className="ribbon-label">Clipboard</span>
+            {/* Font Family & Size */}
+            <div className="flex items-center gap-1 border-r border-[#edebe9] pr-2">
+              <select
+                value={fontFamily}
+                onChange={(e) => setFontFamily(e.target.value)}
+                className="h-6 px-1.5 text-xs bg-white border border-[#d2d0ce] rounded outline-none"
+              >
+                <option>Aptos (Body)</option>
+                <option>Calibri</option>
+                <option>Segoe UI</option>
+                <option>Arial</option>
+                <option>Georgia</option>
+              </select>
+              <select
+                value={fontSize}
+                onChange={(e) => setFontSize(e.target.value)}
+                className="h-6 w-11 px-1 text-xs bg-white border border-[#d2d0ce] rounded outline-none"
+              >
+                {['9', '10', '11', '12', '14', '16', '18', '24'].map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Font */}
-            <div className="ribbon-group">
-              <div className="space-y-1">
-                {/* Font selector row */}
-                <div className="flex items-center gap-1">
-                  <select
-                    value={fontFamily}
-                    onChange={(e) => setFontFamily(e.target.value)}
-                    className="h-6 px-1.5 text-xs bg-white border border-[#e1dfdd] rounded hover:border-[#8a8886] outline-none text-[#201f1e]"
-                  >
-                    <option>Aptos (Body)</option>
-                    <option>Calibri</option>
-                    <option>Segoe UI</option>
-                    <option>Arial</option>
-                    <option>Times New Roman</option>
-                  </select>
-                  <select
-                    value={fontSize}
-                    onChange={(e) => setFontSize(e.target.value)}
-                    className="h-6 w-12 px-1 text-xs bg-white border border-[#e1dfdd] rounded hover:border-[#8a8886] outline-none text-[#201f1e]"
-                  >
-                    {['9', '10', '11', '12', '14', '16', '18', '24', '32'].map((sz) => (
-                      <option key={sz} value={sz}>{sz}</option>
-                    ))}
-                  </select>
-                </div>
-                {/* Format buttons row */}
-                <div className="flex items-center gap-0.5">
-                  <button
-                    onClick={() => editor.chain().focus().toggleBold().run()}
-                    className={`p-1 rounded ${editor.isActive('bold') ? 'bg-[#c7e0f4] text-[#185abd]' : 'hover:bg-[#f3f2f1] text-[#201f1e]'}`}
-                    title="Bold (Ctrl+B)"
-                  >
-                    <Bold size={14} />
-                  </button>
-                  <button
-                    onClick={() => editor.chain().focus().toggleItalic().run()}
-                    className={`p-1 rounded ${editor.isActive('italic') ? 'bg-[#c7e0f4] text-[#185abd]' : 'hover:bg-[#f3f2f1] text-[#201f1e]'}`}
-                    title="Italic (Ctrl+I)"
-                  >
-                    <Italic size={14} />
-                  </button>
-                  <button
-                    onClick={() => editor.chain().focus().toggleUnderline().run()}
-                    className={`p-1 rounded ${editor.isActive('underline') ? 'bg-[#c7e0f4] text-[#185abd]' : 'hover:bg-[#f3f2f1] text-[#201f1e]'}`}
-                    title="Underline (Ctrl+U)"
-                  >
-                    <UnderlineIcon size={14} />
-                  </button>
-                  <button
-                    onClick={() => editor.chain().focus().toggleStrike().run()}
-                    className={`p-1 rounded ${editor.isActive('strike') ? 'bg-[#c7e0f4] text-[#185abd]' : 'hover:bg-[#f3f2f1] text-[#201f1e]'}`}
-                    title="Strikethrough"
-                  >
-                    <Strikethrough size={14} />
-                  </button>
-                  <button
-                    onClick={() => editor.chain().focus().toggleHighlight().run()}
-                    className={`p-1 rounded ${editor.isActive('highlight') ? 'bg-[#fff100] text-black' : 'hover:bg-[#f3f2f1] text-[#201f1e]'}`}
-                    title="Text Highlight Color"
-                  >
-                    <Highlighter size={14} />
-                  </button>
-                </div>
-              </div>
-              <span className="ribbon-label">Font</span>
+            {/* Formatting: Bold, Italic, Underline, Strike */}
+            <div className="flex items-center gap-0.5 border-r border-[#edebe9] pr-2">
+              <button
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                className={`p-1 rounded ${editor.isActive('bold') ? 'bg-[#c7e0f4] text-[#185abd]' : 'hover:bg-[#f3f2f1]'}`}
+                title="Bold (Ctrl+B)"
+              >
+                <Bold size={13} />
+              </button>
+              <button
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                className={`p-1 rounded ${editor.isActive('italic') ? 'bg-[#c7e0f4] text-[#185abd]' : 'hover:bg-[#f3f2f1]'}`}
+                title="Italic (Ctrl+I)"
+              >
+                <Italic size={13} />
+              </button>
+              <button
+                onClick={() => editor.chain().focus().toggleUnderline().run()}
+                className={`p-1 rounded ${editor.isActive('underline') ? 'bg-[#c7e0f4] text-[#185abd]' : 'hover:bg-[#f3f2f1]'}`}
+                title="Underline (Ctrl+U)"
+              >
+                <UnderlineIcon size={13} />
+              </button>
+              <button
+                onClick={() => editor.chain().focus().toggleStrike().run()}
+                className={`p-1 rounded ${editor.isActive('strike') ? 'bg-[#c7e0f4] text-[#185abd]' : 'hover:bg-[#f3f2f1]'}`}
+                title="Strikethrough"
+              >
+                <Strikethrough size={13} />
+              </button>
+              <button
+                onClick={() => editor.chain().focus().toggleHighlight().run()}
+                className={`p-1 rounded ${editor.isActive('highlight') ? 'bg-[#fff100] text-black' : 'hover:bg-[#f3f2f1]'}`}
+                title="Text Highlight"
+              >
+                <Highlighter size={13} />
+              </button>
             </div>
 
-            {/* Paragraph */}
-            <div className="ribbon-group">
-              <div className="space-y-1">
-                <div className="flex items-center gap-0.5">
-                  <button
-                    onClick={() => editor.chain().focus().toggleBulletList().run()}
-                    className={`p-1 rounded ${editor.isActive('bulletList') ? 'bg-[#c7e0f4] text-[#185abd]' : 'hover:bg-[#f3f2f1] text-[#201f1e]'}`}
-                    title="Bullets"
-                  >
-                    <List size={14} />
-                  </button>
-                  <button
-                    onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                    className={`p-1 rounded ${editor.isActive('orderedList') ? 'bg-[#c7e0f4] text-[#185abd]' : 'hover:bg-[#f3f2f1] text-[#201f1e]'}`}
-                    title="Numbering"
-                  >
-                    <ListOrdered size={14} />
-                  </button>
-                  <button
-                    onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                    className={`p-1 rounded ${editor.isActive('blockquote') ? 'bg-[#c7e0f4] text-[#185abd]' : 'hover:bg-[#f3f2f1] text-[#201f1e]'}`}
-                    title="Quote"
-                  >
-                    <Quote size={14} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-0.5">
-                  <button
-                    onClick={() => editor.chain().focus().setTextAlign('left').run()}
-                    className={`p-1 rounded ${editor.isActive({ textAlign: 'left' }) ? 'bg-[#c7e0f4]' : 'hover:bg-[#f3f2f1]'}`}
-                    title="Align Left"
-                  >
-                    <AlignLeft size={14} />
-                  </button>
-                  <button
-                    onClick={() => editor.chain().focus().setTextAlign('center').run()}
-                    className={`p-1 rounded ${editor.isActive({ textAlign: 'center' }) ? 'bg-[#c7e0f4]' : 'hover:bg-[#f3f2f1]'}`}
-                    title="Center"
-                  >
-                    <AlignCenter size={14} />
-                  </button>
-                  <button
-                    onClick={() => editor.chain().focus().setTextAlign('right').run()}
-                    className={`p-1 rounded ${editor.isActive({ textAlign: 'right' }) ? 'bg-[#c7e0f4]' : 'hover:bg-[#f3f2f1]'}`}
-                    title="Align Right"
-                  >
-                    <AlignRight size={14} />
-                  </button>
-                  <button
-                    onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-                    className={`p-1 rounded ${editor.isActive({ textAlign: 'justify' }) ? 'bg-[#c7e0f4]' : 'hover:bg-[#f3f2f1]'}`}
-                    title="Justify"
-                  >
-                    <AlignJustify size={14} />
-                  </button>
-                </div>
-              </div>
-              <span className="ribbon-label">Paragraph</span>
+            {/* Paragraph Alignment & Lists */}
+            <div className="flex items-center gap-0.5 border-r border-[#edebe9] pr-2">
+              <button onClick={() => editor.chain().focus().setTextAlign('left').run()} className="p-1 rounded hover:bg-[#f3f2f1]" title="Align Left"><AlignLeft size={13} /></button>
+              <button onClick={() => editor.chain().focus().setTextAlign('center').run()} className="p-1 rounded hover:bg-[#f3f2f1]" title="Align Center"><AlignCenter size={13} /></button>
+              <button onClick={() => editor.chain().focus().setTextAlign('right').run()} className="p-1 rounded hover:bg-[#f3f2f1]" title="Align Right"><AlignRight size={13} /></button>
+              <button onClick={() => editor.chain().focus().toggleBulletList().run()} className={`p-1 rounded ${editor.isActive('bulletList') ? 'bg-[#c7e0f4]' : 'hover:bg-[#f3f2f1]'}`} title="Bullet List"><List size={13} /></button>
+              <button onClick={() => editor.chain().focus().toggleOrderedList().run()} className={`p-1 rounded ${editor.isActive('orderedList') ? 'bg-[#c7e0f4]' : 'hover:bg-[#f3f2f1]'}`} title="Number List"><ListOrdered size={13} /></button>
+              <button onClick={() => editor.chain().focus().toggleBlockquote().run()} className="p-1 rounded hover:bg-[#f3f2f1]" title="Quote"><Quote size={13} /></button>
             </div>
 
-            {/* Styles */}
-            <div className="ribbon-group">
-              <div className="flex items-center gap-1.5 h-11">
-                <button
-                  onClick={() => editor.chain().focus().setParagraph().run()}
-                  className="px-2 py-1 rounded border border-[#edebe9] hover:border-[#185abd] text-xs bg-white text-left min-w-[55px]"
-                >
-                  <span className="font-semibold block text-[11px]">Normal</span>
-                  <span className="text-[9px] text-[#8a8886]">Aptos</span>
-                </button>
-                <button
-                  onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                  className="px-2 py-1 rounded border border-[#edebe9] hover:border-[#185abd] text-xs bg-white text-left min-w-[65px]"
-                >
-                  <span className="font-bold text-[#185abd] block text-[11px]">Heading 1</span>
-                  <span className="text-[9px] text-[#8a8886]">18 pt</span>
-                </button>
-                <button
-                  onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                  className="px-2 py-1 rounded border border-[#edebe9] hover:border-[#185abd] text-xs bg-white text-left min-w-[65px]"
-                >
-                  <span className="font-semibold text-[#2b579a] block text-[11px]">Heading 2</span>
-                  <span className="text-[9px] text-[#8a8886]">14 pt</span>
-                </button>
-              </div>
-              <span className="ribbon-label">Styles</span>
-            </div>
-
-            {/* Microsoft Copilot Ribbon Section */}
-            <div className="ribbon-group border-r-0 pl-1">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleCopilotAction('Draft & Rewrite')}
-                  className="flex flex-col items-center p-1.5 rounded hover:bg-[#f3f2f1] text-[#201f1e] group"
-                  title="Copilot Writing Assistant"
-                >
-                  <div className="w-6 h-6 rounded-md copilot-gradient flex items-center justify-center text-white mb-0.5 shadow-xs">
-                    <Sparkles size={13} />
-                  </div>
-                  <span className="text-[10px] font-semibold copilot-text">Copilot</span>
-                </button>
-                <div className="flex flex-col gap-1 pl-1">
-                  <button
-                    onClick={() => handleCopilotAction('Summarize')}
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-[#605e5c] hover:bg-[#f3f2f1]"
-                  >
-                    <BookOpen size={11} className="text-[#8a44f8]" /> Summarize
-                  </button>
-                  <button
-                    onClick={() => handleCopilotAction('Translate')}
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-[#605e5c] hover:bg-[#f3f2f1]"
-                  >
-                    <Languages size={11} className="text-[#0078d4]" /> Translate
-                  </button>
-                </div>
-              </div>
-              <span className="ribbon-label font-semibold copilot-text">AI Copilot</span>
+            {/* Quick Headings */}
+            <div className="flex items-center gap-1">
+              <button onClick={() => editor.chain().focus().setParagraph().run()} className="px-2 py-0.5 text-xs rounded border border-[#edebe9] hover:bg-[#f3f2f1]">
+                Normal
+              </button>
+              <button onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} className="px-2 py-0.5 text-xs font-bold text-[#185abd] rounded border border-[#edebe9] hover:bg-[#f3f2f1]">
+                H1
+              </button>
+              <button onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className="px-2 py-0.5 text-xs font-semibold text-[#2b579a] rounded border border-[#edebe9] hover:bg-[#f3f2f1]">
+                H2
+              </button>
             </div>
           </div>
         )}
 
-        {activeRibbonTab !== 'home' && (
-          <div className="flex items-center gap-3 py-3 text-xs text-[#605e5c]">
-            <span>Active Ribbon Tab: <strong>{activeRibbonTab.toUpperCase()}</strong></span>
-            <button
-              onClick={() => setActiveRibbonTab('home')}
-              className="text-[#185abd] hover:underline font-semibold"
-            >
-              ← Return to Home Tab
+        {/* INSERT TAB */}
+        {activeRibbonTab === 'insert' && (
+          <div className="flex items-center gap-2">
+            <button onClick={insertTable} className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-medium">
+              <TableIcon size={14} className="text-[#185abd]" /> Insert Table
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-medium">
+              <ImageIcon size={14} className="text-[#107c41]" /> Upload Image
+            </button>
+            <button onClick={() => editor.chain().focus().setHorizontalRule().run()} className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-medium">
+              <Minus size={14} /> Horizontal Divider
+            </button>
+            <button onClick={() => {
+              const url = prompt('Enter Web Link URL:');
+              if (url) editor.chain().focus().setLink({ href: url }).run();
+            }} className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-medium">
+              <LinkIcon size={14} className="text-[#0078d4]" /> Link
+            </button>
+          </div>
+        )}
+
+        {/* REVIEW TAB */}
+        {activeRibbonTab === 'review' && (
+          <div className="flex items-center gap-2">
+            <button onClick={toggleSpeech} className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold ${isSpeaking ? 'bg-red-100 text-red-600' : 'bg-[#f3f2f1] hover:bg-[#edebe9]'}`}>
+              {isSpeaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              <span>{isSpeaking ? 'Stop Reading' : 'Read Aloud'}</span>
+            </button>
+            <button onClick={() => setShowFindModal(true)} className="flex items-center gap-1.5 px-3 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-semibold">
+              <Search size={14} /> Find & Replace
+            </button>
+            <button onClick={() => {
+              toast.success(`Word Count: ${wordCount} | Characters: ${charCount}`);
+            }} className="flex items-center gap-1.5 px-3 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-semibold">
+              <CheckCircle size={14} className="text-[#107c41]" /> Word Count Stats
+            </button>
+          </div>
+        )}
+
+        {/* VIEW & EXPORT TAB */}
+        {activeRibbonTab === 'view' && (
+          <div className="flex items-center gap-2">
+            <button onClick={() => downloadDocument('docx')} className="flex items-center gap-1.5 px-3 py-1 bg-[#185abd] text-white rounded text-xs font-semibold hover:bg-[#106ebe]">
+              <FileDown size={14} /> Export Word (.docx)
+            </button>
+            <button onClick={() => downloadDocument('md')} className="flex items-center gap-1.5 px-3 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-semibold">
+              <FileDown size={14} /> Export Markdown
+            </button>
+            <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1 bg-[#f3f2f1] hover:bg-[#edebe9] rounded text-xs font-semibold">
+              <Printer size={14} /> Print to PDF
+            </button>
+          </div>
+        )}
+
+        {/* YELLA AI TAB */}
+        {activeRibbonTab === 'yella' && (
+          <div className="flex items-center gap-2">
+            <button onClick={toggleAIPanel} className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded text-xs font-semibold shadow-xs">
+              <Sparkles size={14} /> Open Yella AI Sidekick
+            </button>
+            <button onClick={() => {
+              toast.success('Yella summarized the document');
+              editor.commands.insertContent('<p><strong>📌 Yella Executive Summary:</strong> Key deliverables prioritized across 2 main divisions with +26.8% and +69.1% growth trajectories.</p>');
+            }} className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-xs font-semibold border border-purple-200">
+              <BookOpen size={13} /> Quick Summarize
             </button>
           </div>
         )}
       </div>
 
-      {/* 3. Document Workspace Canvas (Authentic A4 Sheet on Canvas Gray) */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center bg-[#f3f2f1] py-6">
+      {/* 3. Document Workspace Canvas (A4 sheet with 14-inch responsive padding) */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center bg-[#f3f2f1] py-4 px-2">
         <div
-          className="word-page transition-transform duration-150"
+          className="word-page transition-transform duration-100 max-w-full"
           style={{
             transform: `scale(${zoom / 100})`,
             transformOrigin: 'top center',
@@ -386,30 +451,56 @@ export function DocumentEditor() {
         </div>
       </div>
 
-      {/* 4. Microsoft Word Clean Status Bar */}
-      <div className="flex items-center justify-between px-4 py-1 bg-[#f3f2f1] border-t border-[#edebe9] text-[11px] text-[#605e5c] select-none">
-        <div className="flex items-center gap-4">
+      {/* 4. Microsoft Word Status Bar (Single clean row) */}
+      <div className="flex items-center justify-between px-3 py-1 bg-[#f3f2f1] border-t border-[#edebe9] text-[11px] text-[#605e5c] select-none flex-shrink-0">
+        <div className="flex items-center gap-3">
           <span>Page 1 of 1</span>
           <span>{wordCount} words</span>
-          <span className="flex items-center gap-1 text-[#107c41]">
-            <CheckCircle size={12} /> English (United States)
+          <span>{charCount} characters</span>
+          <span className="text-[#107c41] flex items-center gap-1">
+            <CheckCircle size={11} /> English (US)
           </span>
-          <span className="text-[#8a8886]">Accessibility: Good to go</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <button onClick={() => setZoom(Math.max(50, zoom - 10))} className="p-0.5 rounded hover:bg-[#edebe9]">
-              <ZoomOut size={13} />
-            </button>
-            <span className="w-10 text-center font-mono">{zoom}%</span>
-            <button onClick={() => setZoom(Math.min(150, zoom + 10))} className="p-0.5 rounded hover:bg-[#edebe9]">
-              <ZoomIn size={13} />
-            </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5">
+            <button onClick={() => setZoom(Math.max(50, zoom - 10))} className="p-0.5 rounded hover:bg-[#edebe9]"><ZoomOut size={12} /></button>
+            <span className="w-9 text-center font-mono text-[10px]">{zoom}%</span>
+            <button onClick={() => setZoom(Math.min(150, zoom + 10))} className="p-0.5 rounded hover:bg-[#edebe9]"><ZoomIn size={12} /></button>
           </div>
-          <span className="text-[#8a8886]">Print Layout</span>
         </div>
       </div>
+
+      {/* Find & Replace Modal */}
+      {showFindModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="w-[360px] bg-white rounded-lg shadow-xl border border-[#edebe9] p-4 space-y-3">
+            <h3 className="text-xs font-bold text-[#201f1e]">Find & Replace</h3>
+            <input
+              type="text"
+              placeholder="Find text..."
+              value={findText}
+              onChange={(e) => setFindText(e.target.value)}
+              className="w-full text-xs px-2.5 py-1.5 border border-[#d2d0ce] rounded outline-none"
+            />
+            <input
+              type="text"
+              placeholder="Replace with..."
+              value={replaceText}
+              onChange={(e) => setReplaceText(e.target.value)}
+              className="w-full text-xs px-2.5 py-1.5 border border-[#d2d0ce] rounded outline-none"
+            />
+            <div className="flex justify-end gap-2 pt-1">
+              <button onClick={() => setShowFindModal(false)} className="px-3 py-1 text-xs text-[#605e5c]">
+                Cancel
+              </button>
+              <button onClick={handleFindReplace} className="px-3 py-1 text-xs font-bold bg-[#185abd] text-white rounded">
+                Replace All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

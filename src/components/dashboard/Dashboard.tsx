@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import {
   FileText,
@@ -9,62 +10,93 @@ import {
   Code2,
   PenTool,
   Plus,
-  Clock,
-  Star,
   Sparkles,
-  Users,
-  Search,
-  HardDrive,
+  Upload,
+  ArrowRight,
   MoreVertical,
-  CheckCircle2,
+  Trash2,
 } from 'lucide-react';
 import { AppType } from '../../types';
+import toast from 'react-hot-toast';
 
 export function Dashboard() {
-  const { setCurrentApp, documents, toggleAIPanel } = useStore();
+  const { setCurrentApp, documents, deleteDocument, toggleAIPanel, addAIMessage, setActiveDocTitle, setActiveDocContent } = useStore();
+  const [quickPrompt, setQuickPrompt] = useState('');
 
   const quickCreate = [
-    { label: 'Word Document', app: 'document' as AppType, icon: <FileText size={22} className="text-[#185abd]" />, bg: '#e8f0fe', desc: 'New blank document' },
-    { label: 'Excel Workbook', app: 'spreadsheet' as AppType, icon: <Table2 size={22} className="text-[#107c41]" />, bg: '#e6f4ea', desc: 'New blank workbook' },
-    { label: 'PowerPoint Deck', app: 'presentation' as AppType, icon: <Presentation size={22} className="text-[#c43e1c]" />, bg: '#fce8e6', desc: 'New presentation' },
-    { label: 'Outlook Email', app: 'email' as AppType, icon: <Mail size={22} className="text-[#0078d4]" />, bg: '#deecf9', desc: 'Compose message' },
-    { label: 'OneNote Page', app: 'notes' as AppType, icon: <StickyNote size={22} className="text-[#7719aa]" />, bg: '#f3e8ff', desc: 'Capture quick notes' },
-    { label: 'Whiteboard', app: 'whiteboard' as AppType, icon: <PenTool size={22} className="text-[#d83b01]" />, bg: '#fdf3ed', desc: 'Diagram & brainstorm' },
-    { label: 'DevStudio Code', app: 'code-editor' as AppType, icon: <Code2 size={22} className="text-[#008272]" />, bg: '#e6f6f4', desc: 'Run TypeScript/Python' },
+    { label: 'Word Document', app: 'document' as AppType, icon: <FileText size={20} className="text-[#185abd]" />, bg: '#e8f0fe', desc: 'New document' },
+    { label: 'Excel Workbook', app: 'spreadsheet' as AppType, icon: <Table2 size={20} className="text-[#107c41]" />, bg: '#e6f4ea', desc: 'New spreadsheet' },
+    { label: 'PowerPoint Deck', app: 'presentation' as AppType, icon: <Presentation size={20} className="text-[#c43e1c]" />, bg: '#fce8e6', desc: 'New presentation' },
+    { label: 'Gmail', app: 'email' as AppType, icon: <Mail size={20} className="text-[#ea4335]" />, bg: '#fce8e6', desc: 'Google Mail' },
+    { label: 'Calendar', app: 'calendar' as AppType, icon: <Calendar size={20} className="text-[#1a73e8]" />, bg: '#e8f0fe', desc: 'Schedules' },
+    { label: 'OneNote', app: 'notes' as AppType, icon: <StickyNote size={20} className="text-[#7719aa]" />, bg: '#f3e8ff', desc: 'Quick notes' },
+    { label: 'Whiteboard', app: 'whiteboard' as AppType, icon: <PenTool size={20} className="text-[#d83b01]" />, bg: '#fdf3ed', desc: 'Vector drawing' },
   ];
 
+  const handleQuickCreateDoc = () => {
+    setActiveDocTitle('New Document.docx');
+    setActiveDocContent('<h1>New Document</h1><p>Start typing or ask Yella to write your content...</p>');
+    setCurrentApp('document');
+  };
+
+  const handleYellaSubmit = () => {
+    if (!quickPrompt.trim()) return;
+    const p = quickPrompt;
+    setQuickPrompt('');
+    addAIMessage({
+      id: Date.now().toString(),
+      role: 'user',
+      content: p,
+      timestamp: new Date(),
+    });
+    toggleAIPanel();
+    toast.success('Yella is processing your request...');
+  };
+
   return (
-    <div className="h-full overflow-y-auto bg-[#faf9f8] p-8 select-none text-[#201f1e]">
-      {/* 1. Header Banner */}
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
+    <div className="h-full overflow-y-auto bg-[#faf9f8] p-4 sm:p-6 lg:p-8 select-none text-[#201f1e]">
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* 1. Header Greeting */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-[#201f1e] tracking-tight">
-              Good evening, Shiva Ganesh
+            <h1 className="text-xl sm:text-2xl font-bold text-[#201f1e] tracking-tight">
+              Good evening
             </h1>
-            <p className="text-xs text-[#605e5c] mt-1">
-              Welcome to SG-Office 365 • Enterprise AI Assistant Active
+            <p className="text-xs text-[#605e5c] mt-0.5">
+              SG-Office Workspace • Powered by Yella AI
             </p>
           </div>
-          <button
-            onClick={toggleAIPanel}
-            className="flex items-center gap-2 px-4 py-2 rounded-full copilot-gradient text-white text-xs font-semibold shadow-sm hover:opacity-95 transition-all"
-          >
-            <Sparkles size={14} /> Open Microsoft Copilot
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleQuickCreateDoc}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#185abd] hover:bg-[#106ebe] text-white text-xs font-semibold shadow-xs transition-all"
+            >
+              <Plus size={14} /> New Document
+            </button>
+            <button
+              onClick={toggleAIPanel}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold border border-purple-200 transition-all"
+            >
+              <Sparkles size={14} className="text-purple-600" /> Ask Yella
+            </button>
+          </div>
         </div>
 
-        {/* 2. Quick Create Grid (Clean white tiles) */}
+        {/* 2. Quick Create Grid (Clean, responsive on 14-inch screens) */}
         <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-[#605e5c] mb-3">Create New</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-[#605e5c] mb-2.5">Create New</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
             {quickCreate.map((item) => (
               <button
                 key={item.label}
-                onClick={() => setCurrentApp(item.app)}
-                className="bg-white p-4 rounded-lg border border-[#edebe9] hover:border-[#c8c6c4] hover:shadow-sm text-left transition-all flex flex-col justify-between h-28 group"
+                onClick={() => {
+                  if (item.app === 'document') handleQuickCreateDoc();
+                  else setCurrentApp(item.app);
+                }}
+                className="bg-white p-3 rounded-xl border border-[#edebe9] hover:border-[#c8c6c4] hover:shadow-xs text-left transition-all flex flex-col justify-between h-24 group"
               >
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: item.bg }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105" style={{ background: item.bg }}>
                   {item.icon}
                 </div>
                 <div>
@@ -76,71 +108,88 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* 3. Recent Documents & Activity List */}
-        <div className="bg-white rounded-lg border border-[#edebe9] shadow-xs overflow-hidden">
-          {/* Tabs bar */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-[#edebe9] bg-[#faf9f8]">
-            <div className="flex items-center gap-6 text-xs font-semibold">
-              <button className="text-[#185abd] border-b-2 border-[#185abd] pb-2 font-bold">Recent</button>
-              <button className="text-[#605e5c] hover:text-[#201f1e] pb-2">Pinned</button>
-              <button className="text-[#605e5c] hover:text-[#201f1e] pb-2">Shared with me</button>
+        {/* 3. Yella Quick Action Input Bar */}
+        <div className="bg-white p-3.5 rounded-xl border border-[#edebe9] shadow-2xs space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center">
+              <Sparkles size={13} />
             </div>
-            <span className="text-[11px] text-[#8a8886]">AutoSave Synced with OneDrive</span>
+            <span className="text-xs font-bold text-[#201f1e]">Yella AI Prompt Bar</span>
+            <span className="text-[10px] text-[#8a8886] hidden sm:inline">— e.g., "Create a project proposal on cloud migration" or "Analyze CSV file"</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Tell Yella to create a document, generate spreadsheet data, or draft slides..."
+              value={quickPrompt}
+              onChange={(e) => setQuickPrompt(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleYellaSubmit(); }}
+              className="flex-1 px-3 py-1.5 text-xs bg-[#f8f9fa] border border-[#d2d0ce] rounded-lg outline-none focus:border-purple-600 focus:bg-white"
+            />
+            <button
+              onClick={handleYellaSubmit}
+              disabled={!quickPrompt.trim()}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold rounded-lg shadow-xs disabled:opacity-40 hover:opacity-95"
+            >
+              Generate
+            </button>
+          </div>
+        </div>
+
+        {/* 4. Real Recent Documents Table */}
+        <div className="bg-white rounded-xl border border-[#edebe9] shadow-2xs overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-2.5 border-b border-[#edebe9] bg-[#faf9f8]">
+            <span className="text-xs font-bold text-[#201f1e]">Recent Documents & Sheets</span>
+            <span className="text-[11px] text-[#8a8886]">Saved in Local Workspace</span>
           </div>
 
-          {/* Document Rows */}
           <div className="divide-y divide-[#edebe9]">
-            {[
-              { title: 'Quarterly Executive Strategy & AI Integration.docx', type: 'doc', date: 'Just now', size: '24 KB', app: 'document' as AppType },
-              { title: 'Financial Forecasting Model Q4.xlsx', type: 'sheet', date: 'Today at 04:15 PM', size: '1.2 MB', app: 'spreadsheet' as AppType },
-              { title: 'Enterprise AI Architecture Keynote.pptx', type: 'ppt', date: 'Yesterday', size: '8.4 MB', app: 'presentation' as AppType },
-              { title: 'Architecture Flow & Vector Notes.one', type: 'note', date: '3 days ago', size: '110 KB', app: 'notes' as AppType },
-            ].map((doc, idx) => (
+            {documents.map((doc) => (
               <div
-                key={idx}
-                onClick={() => setCurrentApp(doc.app)}
-                className="flex items-center justify-between px-6 py-3.5 hover:bg-[#f8f9fa] cursor-pointer transition-colors"
+                key={doc.id}
+                onClick={() => {
+                  if (doc.type === 'document') {
+                    setActiveDocTitle(doc.title);
+                    if (doc.content) setActiveDocContent(doc.content);
+                    setCurrentApp('document');
+                  } else if (doc.type === 'spreadsheet') {
+                    setCurrentApp('spreadsheet');
+                  } else if (doc.type === 'presentation') {
+                    setCurrentApp('presentation');
+                  }
+                }}
+                className="flex items-center justify-between px-5 py-3 hover:bg-[#f8f9fa] cursor-pointer transition-colors text-xs"
               >
                 <div className="flex items-center gap-3">
-                  {doc.type === 'doc' && <FileText size={18} className="text-[#185abd]" />}
-                  {doc.type === 'sheet' && <Table2 size={18} className="text-[#107c41]" />}
-                  {doc.type === 'ppt' && <Presentation size={18} className="text-[#c43e1c]" />}
-                  {doc.type === 'note' && <StickyNote size={18} className="text-[#7719aa]" />}
+                  {doc.type === 'document' && <FileText size={17} className="text-[#185abd]" />}
+                  {doc.type === 'spreadsheet' && <Table2 size={17} className="text-[#107c41]" />}
+                  {doc.type === 'presentation' && <Presentation size={17} className="text-[#c43e1c]" />}
+                  {doc.type === 'note' && <StickyNote size={17} className="text-[#7719aa]" />}
                   <div>
-                    <span className="text-xs font-semibold text-[#201f1e] block hover:text-[#185abd]">{doc.title}</span>
-                    <span className="text-[10px] text-[#8a8886] block">OneDrive &gt; Documents &gt; Work</span>
+                    <span className="font-semibold text-[#201f1e] block hover:text-[#185abd]">{doc.title}</span>
+                    <span className="text-[10px] text-[#8a8886] block">
+                      Updated {new Date(doc.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {doc.tags.join(', ')}
+                    </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-8 text-xs text-[#605e5c]">
-                  <span>{doc.date}</span>
-                  <span className="w-16 text-right font-mono text-[11px] text-[#8a8886]">{doc.size}</span>
-                  <button className="text-[#8a8886] hover:text-[#201f1e]"><MoreVertical size={16} /></button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteDocument(doc.id);
+                      toast('Document removed');
+                    }}
+                    className="p-1 text-[#8a8886] hover:text-red-600 rounded"
+                    title="Delete"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                  <ArrowRight size={14} className="text-[#8a8886]" />
                 </div>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* 4. Microsoft Copilot Insights Banner */}
-        <div className="bg-white p-5 rounded-lg border border-[#edebe9] shadow-xs flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg copilot-gradient flex items-center justify-center text-white">
-              <Sparkles size={20} />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[#201f1e]">Microsoft Copilot Enterprise Integration</h3>
-              <p className="text-xs text-[#605e5c]">
-                Cross-document autonomous reasoning ready. Use <strong>Ctrl + K</strong> anywhere in SG-Office to query files, draft emails, or generate spreadsheets.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setCurrentApp('ai-chat')}
-            className="px-4 py-2 bg-[#f3f2f1] hover:bg-[#edebe9] rounded-md text-xs font-semibold text-[#201f1e] border border-[#d2d0ce]"
-          >
-            Chat with Copilot
-          </button>
         </div>
       </div>
     </div>

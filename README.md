@@ -1,8 +1,8 @@
-# 🏢 SG-Office 365 — Next-Generation Enterprise AI Office Suite
+# 🏢 SG-Office — Next-Gen AI Office Suite with Yella AI
 
-**SG-Office** is a clean, modern, white Microsoft Office 365 alternative with the familiar Microsoft Fluent Ribbon, built-in autonomous **Copilot AI**, and zero-telemetry privacy sovereignty.
+**SG-Office** is a clean, modern, white Microsoft Office alternative designed with authentic Fluent Ribbon toolbars, Google **Gmail** integration, real CSV/Excel dataset processing, and our personalized autonomous AI assistant, **Yella**.
 
-![SG-Office Banner](https://img.shields.io/badge/SG--Office-365%20Enterprise-0078d4?style=for-the-badge&logo=microsoft)
+![SG-Office Banner](https://img.shields.io/badge/SG--Office-Personalized%20AI%20Suite-0078d4?style=for-the-badge)
 ![React 19](https://img.shields.io/badge/React-19.3-61dafb?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178c6?style=for-the-badge&logo=typescript)
 ![Vite](https://img.shields.io/badge/Vite-8.3-646cff?style=for-the-badge&logo=vite)
@@ -10,54 +10,52 @@
 
 ---
 
-## ✨ Features & Applications
+## 🌟 Key Applications & Features
 
 ### 1. 📄 Word (`SG-Word`)
-- Authentic Microsoft Word Ribbon toolbar (*Home, Insert, Layout, References, Review, View, Copilot*).
-- True-to-life A4 paper page layout on canvas gray (`#f3f2f1`) with standard 1-inch margins.
-- TipTap WYSIWYG editor supporting Headings, Bold, Italic, Underline, Highlight, Lists, Tables, Blockquotes, and Code blocks.
-- Real-time Word Count, Character Count, Zoom (50%–150%), and English US proofing check.
+- **Authentic Ribbon Interface**: Single-row compact toolbar tuned specifically for 14-inch laptop screens (no wrapped text or cramped icons).
+- **Rich Formatting Tools**:
+  - Headings (H1, H2, H3, Normal), Aptos/Calibri font selection, size picker.
+  - Bold, Italic, Underline, Strikethrough, Text Highlighting.
+  - Bulleted, Numbered, and Quote lists.
+  - Left, Center, Right, Justify text alignment.
+- **Insert Tools**: Insert 3x3 Tables, upload local images directly from disk, embed web links, and horizontal dividers.
+- **Review Tools**: Built-in **Read Aloud** Text-to-Speech (speechSynthesis), Find & Replace modal, live word and character count stats.
+- **Exporting**: Download as `.docx`, Markdown (`.md`), HTML, or print to PDF!
 
 ### 2. 📊 Excel (`SG-Excel`)
-- Microsoft Excel emerald green ribbon theme with Font, Alignment, Number format (`$`, `%`, `,`), and AutoSum.
-- Active cell name box, `fx` formula bar, and formula engine supporting `=SUM(...)`, `=AVERAGE(...)`, and cell-referencing.
-- Sheet tab management (`Sheet1`, `Sheet2`) with zoom scaling.
+- **Real CSV File Upload & Parsing**: Pick any `.csv` or `.txt` file from your computer — automatically maps all rows and columns to the spreadsheet.
+- **Real CSV Export**: 1-click download of your workbook as a `.csv` file.
+- **Formula Engine**:
+  - Range formulas: `=SUM(A1:A10)`, `=AVERAGE(A1:A10)`, `=COUNT(...)`, `=MAX(...)`, `=MIN(...)`.
+  - Arithmetic formulas: `=C2*D2`, `=A1+B1`, `=A1-B1`, `=A1/B1`.
+- **Live Recharts Data Visualization**: Generate dynamic **Bar Charts** and **Pie Charts** from numerical spreadsheet columns!
+- **Wide 130px Column Headers**: No truncated labels (`Pr...`), full visibility on 14-inch laptops.
+- Number formatting (`$`, `%`), AutoSum, and multi-sheet support.
 
 ### 3. 🖥️ PowerPoint (`SG-PowerPoint`)
-- PowerPoint coral red-orange ribbon interface.
-- 16:9 widescreen canvas with slide deck thumbnail navigation.
-- Full-screen Presenter Mode (`Play From Beginning`) with keyboard shortcut support (`Esc` to exit, Arrow keys to navigate).
+- 16:9 widescreen presentation canvas with slide deck thumbnail panel.
+- Slide creation, duplication, deletion, and slide reordering (Move Up / Down).
+- Layouts: Title Slide, Title & Content, Two Columns, Blank.
+- Speaker Notes drawer at bottom of canvas.
+- 1-click **Full-Screen Presenter Mode** with keyboard navigation (`Esc`, Arrow keys).
 
-### 4. 📬 Outlook (`SG-Outlook`)
-- Clean Microsoft Outlook mail client with Inbox, Starred, Sent, Drafts, and Trash.
-- 1-click Copilot quick reply generator (*Professional, Enthusiastic, Concise*).
-- Encrypted message composer with attachment support.
+### 4. 📬 Google Gmail (`SG-Gmail`)
+- Replaces legacy Outlook with genuine **Google Gmail** experience.
+- Authentic Material Design with the Google Compose pill button.
+- Primary, Promotions, and Social category tabs.
+- **Google Account Sign-In**: Dedicated connect modal to link Google Workspace / Gmail OAuth credentials.
+- Floating Gmail compose window with formatting tools and Yella polish.
 
-### 5. 📅 Calendar (`SG-Calendar`)
-- Monthly interactive calendar with category color tags (*work, ai, meeting, review*).
-- Day inspector with schedule breakdowns and 1-click Microsoft Teams video call launcher.
-
-### 6. 📌 OneNote (`SG-OneNote`)
-- Notebook pages and categorized markdown canvas with pin states and timestamps.
-
-### 7. 💻 DevStudio & 🎨 Whiteboard
-- **DevStudio**: Embedded TypeScript/Python/SQL sandbox for engineers and data analysts.
-- **Whiteboard**: Freeform vector architecture canvas with flow diagramming tools.
-
-### 8. 🤖 Microsoft Copilot Integration
-- Dedicated Copilot reasoning interface and slide-out sidekick drawer accessible from any application.
-- Cross-document contextual grounding across Word, Excel, and PowerPoint.
-- Global Command Palette accessible via **`Ctrl + K`** or `Alt + Q`.
+### 5. 🤖 Yella AI — Your Personalized Autonomous Assistant
+- **Interactive Document Generation**: Type *"Create a project proposal document on cloud migration"* — Yella generates the complete structured document and writes it directly into Word!
+- **Spreadsheet & CSV Ingestion**: Upload any CSV into Yella's chat window or prompt bar — Yella analyzes the metrics and populates Excel!
+- **Available Everywhere**: Accessible as a full dedicated chat hub or as an instant slide-out sidekick drawer (`TopBar > Yella AI`).
+- **Global Command Palette**: Press **`Ctrl + K`** anywhere to search apps, files, or trigger Yella.
 
 ---
 
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+ (tested on Node v24)
-- npm or yarn
-
-### Installation & Run
+## 🚀 Quick Start Guide
 
 ```bash
 # Clone the repository
@@ -67,13 +65,15 @@ cd SG-Office
 # Install dependencies
 npm install
 
-# Start development server
+# Run development server
 npm run dev
 ```
 
-Open [http://localhost:5173/](http://localhost:5173/) in your web browser.
+Visit [http://localhost:5173/](http://localhost:5173/) in your web browser.
 
-### Production Build
+---
+
+## 💻 Production Build
 
 ```bash
 npm run build
@@ -82,11 +82,5 @@ npm run preview
 
 ---
 
-## 🔒 Enterprise Privacy & Security
-- **Zero-Telemetry Policy**: User documents are processed locally or on private inference endpoints; no telemetry is leaked to public ad engines.
-- **Local Vault Encryption**: AES-256 local encrypted storage for enterprise safety.
-
----
-
-## 👨‍💻 Created by
-**Shiva Ganesh** — SG-Office 365 Project
+## 🔒 Data Privacy Guarantee
+- **Zero Telemetry**: All documents and spreadsheets are stored locally in your browser workspace. No keystroke monitoring or unauthorized data leakage.

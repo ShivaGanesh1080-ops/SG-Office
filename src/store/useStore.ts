@@ -15,111 +15,161 @@ interface StoreActions {
   toggleAIPanel: () => void;
   setSearchQuery: (query: string) => void;
   toggleSearch: () => void;
+  
+  // Custom user data for live editing
+  activeDocContent: string;
+  setActiveDocContent: (content: string) => void;
+  activeDocTitle: string;
+  setActiveDocTitle: (title: string) => void;
+  
+  spreadsheetData: Record<string, string>;
+  setSpreadsheetData: (data: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
+  
+  gmailAccount: { email: string; name: string; connected: boolean; clientId?: string } | null;
+  setGmailAccount: (account: { email: string; name: string; connected: boolean; clientId?: string } | null) => void;
 }
 
-const sampleDocuments: Document[] = [
-  {
-    id: '1',
-    title: 'Project Proposal - Q4 2024',
-    content: '<h1>Project Proposal</h1><p>This is a comprehensive proposal for our Q4 initiatives...</p>',
-    createdAt: new Date('2024-10-01'),
-    updatedAt: new Date('2024-10-15'),
-    type: 'document',
-    tags: ['work', 'proposal'],
-    starred: true,
-  },
-  {
-    id: '2',
-    title: 'Financial Report',
-    content: '',
-    createdAt: new Date('2024-09-15'),
-    updatedAt: new Date('2024-10-10'),
-    type: 'spreadsheet',
-    tags: ['finance'],
-    starred: false,
-  },
-  {
-    id: '3',
-    title: 'Team Meeting Slides',
-    content: '',
-    createdAt: new Date('2024-10-05'),
-    updatedAt: new Date('2024-10-12'),
-    type: 'presentation',
-    tags: ['meeting'],
-    starred: true,
-  },
-  {
-    id: '4',
-    title: 'Design Ideas',
-    content: '# Design Ideas\n\n- New color scheme\n- Updated typography\n- Modern layout concepts',
-    createdAt: new Date('2024-10-08'),
-    updatedAt: new Date('2024-10-14'),
-    type: 'note',
-    tags: ['design'],
-    starred: false,
-  },
-  {
-    id: '5',
-    title: 'API Integration Script',
-    content: 'const fetchData = async () => {\n  const res = await fetch("/api/data");\n  return res.json();\n};',
-    createdAt: new Date('2024-10-10'),
-    updatedAt: new Date('2024-10-16'),
-    type: 'code',
-    tags: ['development'],
-    starred: false,
-  },
-];
+const initialSpreadsheet: Record<string, string> = {
+  'A1': 'Item Description', 'B1': 'Category', 'C1': 'Unit Price ($)', 'D1': 'Units Sold', 'E1': 'Gross Total ($)', 'F1': 'Profit Margin',
+  'A2': 'Cloud Infrastructure Pro', 'B2': 'Software', 'C2': '120', 'D2': '450', 'E2': '=C2*D2', 'F2': '65%',
+  'A3': 'AI Assistant Annual Pass', 'B3': 'Subscription', 'C3': '240', 'D3': '320', 'E3': '=C3*D3', 'F3': '82%',
+  'A4': 'Security Compliance Suite', 'B4': 'Enterprise', 'C4': '500', 'D4': '85', 'E4': '=C4*D4', 'F4': '70%',
+  'A5': 'Developer API Compute', 'B5': 'Add-on', 'C5': '50', 'D5': '920', 'E5': '=C5*D5', 'F5': '55%',
+  'A6': '', 'B6': '', 'C6': '', 'D6': '', 'E6': '', 'F6': '',
+  'A7': 'Total Revenue', 'B7': '', 'C7': '', 'D7': '=SUM(D2:D5)', 'E7': '=SUM(E2:E5)', 'F7': 'Average Margin',
+};
+
+// Load saved data from localStorage if available
+const loadSavedDocs = (): Document[] => {
+  try {
+    const saved = localStorage.getItem('sg_office_documents');
+    if (saved) return JSON.parse(saved);
+  } catch (e) {
+    console.error(e);
+  }
+  return [
+    {
+      id: 'doc-1',
+      title: 'Project Roadmap 2027.docx',
+      content: '<h1>Project Roadmap 2027</h1><p>Welcome to your personal SG-Office Word document. Start typing or ask Yella AI to write your content.</p>',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      type: 'document',
+      tags: ['Strategy'],
+      starred: true,
+    },
+    {
+      id: 'sheet-1',
+      title: 'Annual Budget & Projections.xlsx',
+      content: '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      type: 'spreadsheet',
+      tags: ['Finance'],
+      starred: true,
+    },
+    {
+      id: 'slide-1',
+      title: 'Executive Pitch Deck.pptx',
+      content: '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      type: 'presentation',
+      tags: ['Keynote'],
+      starred: false,
+    },
+  ];
+};
 
 export const useStore = create<AppState & StoreActions>((set) => ({
   currentApp: null,
   sidebarCollapsed: false,
-  theme: 'dark',
-  documents: sampleDocuments,
+  theme: 'light',
+  documents: loadSavedDocs(),
   activeDocument: null,
   aiMessages: [
     {
       id: 'welcome',
       role: 'assistant',
-      content: "Hello! I'm Nova AI, your intelligent assistant. I can help you write documents, analyze data, create presentations, generate code, and much more. What would you like to do?",
+      content: "Hello! I am **Yella**, your personalized office AI assistant. I can:\n- ✍️ Create, edit, and format documents in **Word**\n- 📊 Parse CSV / Excel files, calculate formulas, and chart data in **Excel**\n- 🎨 Build complete presentation slides in **PowerPoint**\n- 📬 Compose and organize emails in **Gmail**\n\nHow can I help you today?",
       timestamp: new Date(),
-    }
+    },
   ],
   aiPanelOpen: false,
   notifications: [],
   searchQuery: '',
   searchOpen: false,
 
+  activeDocContent: '',
+  setActiveDocContent: (content) => set({ activeDocContent: content }),
+  activeDocTitle: 'Untitled Document.docx',
+  setActiveDocTitle: (title) => set({ activeDocTitle: title }),
+
+  spreadsheetData: (() => {
+    try {
+      const saved = localStorage.getItem('sg_office_sheet');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return initialSpreadsheet;
+  })(),
+  setSpreadsheetData: (updater) =>
+    set((state) => {
+      const newData = typeof updater === 'function' ? updater(state.spreadsheetData) : updater;
+      try { localStorage.setItem('sg_office_sheet', JSON.stringify(newData)); } catch {}
+      return { spreadsheetData: newData };
+    }),
+
+  gmailAccount: (() => {
+    try {
+      const saved = localStorage.getItem('sg_office_gmail');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  })(),
+  setGmailAccount: (acc) => {
+    try { localStorage.setItem('sg_office_gmail', JSON.stringify(acc)); } catch {}
+    set({ gmailAccount: acc });
+  },
+
   setCurrentApp: (app) => set({ currentApp: app }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   toggleTheme: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
-  addDocument: (doc) => set((state) => ({ documents: [doc, ...state.documents] })),
+  addDocument: (doc) =>
+    set((state) => {
+      const updated = [doc, ...state.documents];
+      try { localStorage.setItem('sg_office_documents', JSON.stringify(updated)); } catch {}
+      return { documents: updated };
+    }),
   setActiveDocument: (doc) => set({ activeDocument: doc }),
   updateDocument: (id, updates) =>
-    set((state) => ({
-      documents: state.documents.map((d) =>
-        d.id === id ? { ...d, ...updates, updatedAt: new Date() } : d
-      ),
-    })),
+    set((state) => {
+      const updated = state.documents.map((d) => (d.id === id ? { ...d, ...updates, updatedAt: new Date() } : d));
+      try { localStorage.setItem('sg_office_documents', JSON.stringify(updated)); } catch {}
+      return { documents: updated };
+    }),
   deleteDocument: (id) =>
-    set((state) => ({
-      documents: state.documents.filter((d) => d.id !== id),
-      activeDocument: state.activeDocument?.id === id ? null : state.activeDocument,
-    })),
+    set((state) => {
+      const updated = state.documents.filter((d) => d.id !== id);
+      try { localStorage.setItem('sg_office_documents', JSON.stringify(updated)); } catch {}
+      return {
+        documents: updated,
+        activeDocument: state.activeDocument?.id === id ? null : state.activeDocument,
+      };
+    }),
   toggleStarDocument: (id) =>
-    set((state) => ({
-      documents: state.documents.map((d) =>
-        d.id === id ? { ...d, starred: !d.starred } : d
-      ),
-    })),
-  addAIMessage: (message) =>
-    set((state) => ({ aiMessages: [...state.aiMessages, message] })),
+    set((state) => {
+      const updated = state.documents.map((d) => (d.id === id ? { ...d, starred: !d.starred } : d));
+      try { localStorage.setItem('sg_office_documents', JSON.stringify(updated)); } catch {}
+      return { documents: updated };
+    }),
+  addAIMessage: (message) => set((state) => ({ aiMessages: [...state.aiMessages, message] })),
   clearAIMessages: () =>
     set({
       aiMessages: [
         {
           id: 'welcome',
           role: 'assistant',
-          content: "Chat cleared! I'm ready to help you with anything. What would you like to do?",
+          content: "Chat cleared! I'm Yella. Ask me to draft a document, analyze a CSV/Excel file, or generate a presentation.",
           timestamp: new Date(),
         },
       ],
